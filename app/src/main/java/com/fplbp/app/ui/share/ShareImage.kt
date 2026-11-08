@@ -13,6 +13,7 @@ import android.text.TextPaint
 import android.text.TextUtils
 import android.widget.Toast
 import androidx.core.content.FileProvider
+import com.fplbp.app.BuildConfig
 import com.fplbp.app.data.GwStatus
 import com.fplbp.app.data.GwView
 import com.fplbp.app.data.LeagueData
@@ -168,6 +169,24 @@ object ShareImage {
     }
 
     private fun today() = SimpleDateFormat("dd.MM.yyyy. HH:mm", Locale.getDefault()).format(Date())
+
+    // ------------------------------------------------------------ app link
+
+    /** Always downloads the newest APK (the release workflow uploads a copy named FPLBP.apk). */
+    fun appLink(): String? = BuildConfig.GITHUB_REPO.takeIf { it.isNotBlank() }
+        ?.let { "https://github.com/$it/releases/latest/download/FPLBP.apk" }
+
+    fun shareAppLink(context: Context) {
+        val link = appLink() ?: return
+        val text = "FPLBP, aplikacija za našu ligu (ko duguje za večeru).\n" +
+            "Najnovija verzija: $link\n" +
+            "Posle preuzimanja otvori fajl i dozvoli instalaciju iz nepoznatih izvora."
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, text)
+        }
+        context.startActivity(Intent.createChooser(send, "Podeli aplikaciju").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
 
     // ------------------------------------------------------------ share
 

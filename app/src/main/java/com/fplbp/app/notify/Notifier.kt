@@ -49,6 +49,7 @@ class Notifier(private val context: Context, private val db: AppDatabase, privat
             val live = data.gws.lastOrNull { it.status != GwStatus.FINAL } ?: return
             deadlineDigest(data, live, silent)
             if (live.status == GwStatus.LIVE) {
+                decided(data, live, silent)
                 lastMatch(data, live, silent)
                 bottomChange(data, live, silent)
                 matchdaySummary(data, live, silent)
@@ -174,6 +175,41 @@ class Notifier(private val context: Context, private val db: AppDatabase, privat
         if (post(b, 3200 + live.gw)) log(key)
     }
 
+    /** Each team's live state: net points, captain, and counting players still to play. */
+    private fun liveTeams(data: LeagueData, live: GwView): Map<Long, BanterEngine.LiveTeam> {
+        val names = names(data)
+        return data.teams.mapNotNull { t ->
+            val lu = live.lineups[t.entryId] ?: return@mapNotNull null
+            val score = live.scores.firstOrNull { it.entryId == t.entryId } ?: return@mapNotNull null
+            val cap = lu.picks.firstOrNull { (it.isCaptain && !lu.captaincyToVice) || it.captaincyPassed }
+                ?: lu.picks.firstOrNull { it.isCaptain } ?: return@mapNotNull null
+            val capDone = live.clubState(data.players[cap.element]?.clubId).state.let { it == PlayState.DONE || it == PlayState.BLANK }
+            val remaining = lu.picks.filter { it.multiplier > 0 }.mapNotNull { p ->
+                val st = live.clubState(data.players[p.element]?.clubId)
+                if (st.state != PlayState.UPCOMING && st.state != PlayState.LIVE) return@mapNotNull null
+                // Playing right now counts as still to come (kickoff = today).
+                val k = st.nextKickoff ?: System.currentTimeMillis()
+                BanterEngine.Remaining(p.element, data.playerName(p.element), dayAccusative(Instant.ofEpochMilli(k).atZone(zone).toLocalDate()))
+            }
+            t.entryId to BanterEngine.LiveTeam(names[t.entryId] ?: t.name, score.net, data.playerName(cap.element), cap.total, capDone, remaining)
+        }.toMap()
+    }
+
+    /** Once per gameweek: the bottom team(s) have no players left and can't be caught anymore. */
+    private suspend fun decided(data: LeagueData, live: GwView, silent: Boolean) {
+        val key = "decided-${live.gw}"
+        if (dao.notifSent(key) > 0) return
+        val o = live.outcome ?: return
+        if (live.fixtures.none { !it.finished && !it.finishedProvisional }) return // settlement comes soon anyway
+        val teams = liveTeams(data, live)
+        if (teams.size < data.teams.size) return
+        if (!BanterEngine.isDecided(teams.values.map { it.net to it.remaining.isNotEmpty() })) return
+        if (silent || !prefs.notifMatchday) { log(key); return }
+        if (quietHours()) return
+        val b = BanterEngine.decided(live.gw, o.losers.mapNotNull { teams[it]?.name }, o.share)
+        if (post(b, 3700 + live.gw)) log(key)
+    }
+
     /** After each completed matchday except the last one of the gameweek (the settlement covers that). */
     private suspend fun matchdaySummary(data: LeagueData, live: GwView, silent: Boolean) {
         val fixtures = live.fixtures.filter { it.kickoff != null }
@@ -189,21 +225,7 @@ class Notifier(private val context: Context, private val db: AppDatabase, privat
         if (dao.notifSent(key) > 0) return
         if (silent || !prefs.notifMatchday) { log(key); return }
         if (quietHours()) return
-        val names = names(data)
-        val teams = data.teams.mapNotNull { t ->
-            val lu = live.lineups[t.entryId] ?: return@mapNotNull null
-            val score = live.scores.firstOrNull { it.entryId == t.entryId } ?: return@mapNotNull null
-            val cap = lu.picks.firstOrNull { (it.isCaptain && !lu.captaincyToVice) || it.captaincyPassed }
-                ?: lu.picks.firstOrNull { it.isCaptain } ?: return@mapNotNull null
-            val capDone = live.clubState(data.players[cap.element]?.clubId).state.let { it == PlayState.DONE || it == PlayState.BLANK }
-            val remaining = lu.picks.filter { it.multiplier > 0 }.mapNotNull { p ->
-                val st = live.clubState(data.players[p.element]?.clubId)
-                if (st.state != PlayState.UPCOMING && st.state != PlayState.LIVE) return@mapNotNull null
-                val k = st.nextKickoff ?: return@mapNotNull null
-                BanterEngine.Remaining(p.element, data.playerName(p.element), dayAccusative(Instant.ofEpochMilli(k).atZone(zone).toLocalDate()))
-            }
-            BanterEngine.LiveTeam(names[t.entryId] ?: t.name, score.net, data.playerName(cap.element), cap.total, capDone, remaining)
-        }
+        val teams = liveTeams(data, live).values.toList()
         BanterEngine.matchday(live.gw, dayGenitive(d), teams)?.let { post(it, 3000 + live.gw) }
         log(key)
     }

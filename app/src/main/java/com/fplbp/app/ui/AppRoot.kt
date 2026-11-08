@@ -137,6 +137,10 @@ fun AppRoot(vm: MainViewModel = viewModel()) {
                                     onClick = { shareMenu = false; ShareImage.shareGameweek(context, d, gv) },
                                 )
                             }
+                            if (ShareImage.appLink() != null) DropdownMenuItem(
+                                text = { Text("Link za aplikaciju") },
+                                onClick = { shareMenu = false; ShareImage.shareAppLink(context) },
+                            )
                         }
                     }
                     if (isTab) IconButton(onClick = { nav.navigate("podesavanja") }) {

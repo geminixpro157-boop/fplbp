@@ -40,6 +40,7 @@ import com.fplbp.app.BuildConfig
 import com.fplbp.app.data.LeagueData
 import com.fplbp.app.ui.MainViewModel
 import com.fplbp.app.ui.components.SectionCard
+import com.fplbp.app.ui.share.ShareImage
 import com.fplbp.app.ui.theme.App
 import com.fplbp.app.ui.time
 import org.json.JSONArray
@@ -124,6 +125,10 @@ fun SettingsScreen(vm: MainViewModel) {
                     style = MaterialTheme.typography.bodySmall, color = App.colors.muted,
                 )
                 Spacer(Modifier.height(8.dp))
+                if (ShareImage.appLink() != null) {
+                    OutlinedButton(onClick = { ShareImage.shareAppLink(context) }) { Text("Podeli aplikaciju") }
+                    Spacer(Modifier.height(4.dp))
+                }
                 if (update != null) {
                     Button(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(update!!.url))) }) { Text("Preuzmi novu verziju") }
                 } else if (BuildConfig.GITHUB_REPO.isNotBlank()) {

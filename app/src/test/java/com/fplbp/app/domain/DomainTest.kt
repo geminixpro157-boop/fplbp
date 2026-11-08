@@ -217,11 +217,11 @@ class DomainTest {
 
     @Test fun suspense() {
         val m = BanterEngine.matchday(11, "nedelje", listOf(
-            BanterEngine.LiveTeam("Marko", 40, "Haaland", 10, true, emptyList()),
-            BanterEngine.LiveTeam("Jovan", 44, "Haaland", 10, true, listOf(BanterEngine.Remaining(7, "Salah", "ponedeljak"))),
+            BanterEngine.LiveTeam("Marko", 40, "Haaland", 10, true, listOf(BanterEngine.Remaining(7, "Salah", "ponedeljak"))),
+            BanterEngine.LiveTeam("Jovan", 44, "Haaland", 10, true, emptyList()),
             BanterEngine.LiveTeam("Petar", 70, "Haaland", 10, true),
         ))!!
-        assertEquals("Sve se odlučuje u ponedeljak: Jovan ima Salah, Marko nema.", m.text)
+        assertEquals("Sve se odlučuje u ponedeljak: Marko ima Salah, Jovan nema.", m.text)
     }
 
     @Test fun noTightRaceWhenNobodyLeft() {
@@ -239,6 +239,31 @@ class DomainTest {
             BanterEngine.LiveTeam("Petar", 62, "Haaland", 10, true),
         ))
         assertNotNull(open)
+    }
+
+    @Test fun decided() {
+        // Baljamendi 54, nobody left; next is 55 with nobody left; others far ahead with players.
+        assertTrue(BanterEngine.isDecided(listOf(54 to false, 55 to false, 62 to true, 62 to true)))
+        // Next team 1 point ahead still has players (could lose points): not decided.
+        assertTrue(!BanterEngine.isDecided(listOf(54 to false, 55 to true, 62 to true)))
+        // Loser still has players: not decided.
+        assertTrue(!BanterEngine.isDecided(listOf(54 to true, 60 to false)))
+        // 3+ points clear: decided even if the others still play.
+        assertTrue(BanterEngine.isDecided(listOf(50 to false, 53 to true)))
+        assertEquals(
+            "Kolo 10 je praktično rešeno: Baljamendi nema više igrača i plaća 350 RSD. Konačno kad FPL potvrdi bodove.",
+            BanterEngine.decided(10, listOf("Baljamendi"), Rational.of(350)).text,
+        )
+        assertEquals(
+            "Kolo 10 je praktično rešeno: Marko i Jovan nemaju više igrača i dele po 175 RSD. Konačno kad FPL potvrdi bodove.",
+            BanterEngine.decided(10, listOf("Marko", "Jovan"), Rational.of(175)).text,
+        )
+        // Once decided, no race message in the matchday summary.
+        assertNull(BanterEngine.matchday(10, "subote", listOf(
+            BanterEngine.LiveTeam("Marko", 40, "Haaland", 10, true),
+            BanterEngine.LiveTeam("Jovan", 41, "Haaland", 10, true),
+            BanterEngine.LiveTeam("Petar", 62, "Haaland", 10, true, listOf(BanterEngine.Remaining(9, "Mbeumo", "nedelju"))),
+        )))
     }
 
     @Test fun lastMatch() {

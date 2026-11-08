@@ -49,6 +49,8 @@ jobs:
         run: |
           VERSION="1.0.${{ github.run_number }}"
           cp app/build/outputs/apk/release/app-release.apk "FPLBP-$VERSION.apk"
+          # Fixed name, so .../releases/latest/download/FPLBP.apk always points to the newest build.
+          cp app/build/outputs/apk/release/app-release.apk FPLBP.apk
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - uses: softprops/action-gh-release@v2
@@ -58,5 +60,7 @@ jobs:
           body: |
             Instaliraj FPLBP-${{ env.VERSION }}.apk preko stare verzije, podaci ostaju.
             Commit: ${{ github.event.head_commit.message }}
-          files: FPLBP-${{ env.VERSION }}.apk
+          files: |
+            FPLBP-${{ env.VERSION }}.apk
+            FPLBP.apk
           make_latest: true

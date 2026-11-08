@@ -98,11 +98,16 @@ object BanterEngine {
         if (teams.size < 2) return null
         val sorted = teams.sortedBy { it.net }
         val last = sorted.first()
-        val lastTied = sorted.filter { it.net == last.net }
-        val next = sorted.firstOrNull { it.net > last.net }
+        val lastTied = sorted.filter { it.net == last.net }.toMutableList()
+        var next = sorted.firstOrNull { it.net > last.net }
         val candidates = mutableListOf<Banter>()
         val title = "Kolo $gw · posle $dayLabel"
 
+        if (isDecided(teams.map { it.net to it.remaining.isNotEmpty() })) {
+            // The "practically decided" message covers this; only captain stories remain.
+            lastTied.clear()
+            next = null
+        }
         // A close bottom is only news if one of the teams involved still has players to come.
         val stillOpen = { list: List<LiveTeam> -> list.any { it.remaining.isNotEmpty() } }
         if (lastTied.size > 1) {
@@ -166,6 +171,30 @@ object BanterEngine {
         return null
     }
 
+    // ---------- Practically decided ----------
+
+    /**
+     * True when the team(s) at the bottom have no players left and can't realistically be caught:
+     * the next team is 3+ points ahead, or every team within 2 points has no players left either.
+     * Input: (net points, still has players to come) per team.
+     */
+    fun isDecided(teams: List<Pair<Int, Boolean>>): Boolean {
+        if (teams.size < 2) return false
+        val low = teams.minOf { it.first }
+        if (teams.any { it.first == low && it.second }) return false
+        val close = teams.filter { it.first in (low + 1)..(low + 2) }
+        return close.none { it.second }
+    }
+
+    fun decided(gw: Int, losers: List<String>, share: Rational): Banter {
+        val text = if (losers.size == 1) {
+            "Kolo $gw je praktično rešeno: ${losers[0]} nema više igrača i plaća ${Fmt.rsdShort(share)}."
+        } else {
+            "Kolo $gw je praktično rešeno: ${joinSr(losers)} nemaju više igrača i dele po ${Fmt.rsdShort(share)}."
+        }
+        return Banter("Kolo $gw · rešeno", "$text Konačno kad FPL potvrdi bodove.", 6)
+    }
+
     // ---------- One match left ----------
 
     /** A team at the bottom and its counting players in the last remaining match. */
@@ -177,6 +206,7 @@ object BanterEngine {
      */
     fun lastMatch(gw: Int, match: String, teams: List<BottomTeam>, maxGap: Int = 8): Banter? {
         if (teams.size < 2) return null
+        if (isDecided(teams.map { it.net to it.playersInMatch.isNotEmpty() })) return null
         val sorted = teams.sortedBy { it.net }
         val low = sorted.first().net
         val tied = sorted.filter { it.net == low }
