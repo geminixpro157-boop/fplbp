@@ -28,6 +28,7 @@ import com.fplbp.app.domain.TeamSeasonStats
 import com.fplbp.app.domain.poena
 import com.fplbp.app.ui.components.BarItem
 import com.fplbp.app.ui.components.HBarChart
+import com.fplbp.app.ui.components.PositionHeatmap
 import com.fplbp.app.ui.components.SectionCard
 import com.fplbp.app.ui.components.TeamDot
 import com.fplbp.app.ui.components.teamColor
@@ -45,7 +46,7 @@ fun StatsScreen(data: LeagueData, onTeam: (Long) -> Unit) {
         item { BarCard(data, "Puta poslednji", "Uključena deljena dna", stats) { it.timesLast } }
         item { BarCard(data, "Minusi za transfere", "Ukupno bodova izgubljeno na hitove", stats, suffix = { s -> " (${s.hitsCount}×)" }) { it.hitsPoints } }
         item { BarCard(data, "Bodovi ostavljeni na klupi", "Bez kola sa Bench Boost-om", stats) { it.benchPoints } }
-        item { SummaryTable(data, stats, onTeam) }
+        if (data.gws.size >= 2) item { HeatmapCard(data) }
     }
 }
 
@@ -100,38 +101,14 @@ private fun BarCard(
 }
 
 @Composable
-private fun SummaryTable(data: LeagueData, stats: List<TeamSeasonStats>, onTeam: (Long) -> Unit) {
-    SectionCard(title = "Pregled sezone", subtitle = "Konzistentnost = koliko skaču bodovi (manje je stabilnije)") {
-        Row(Modifier.horizontalScroll(rememberScrollState())) {
-            Column {
-                val header = listOf("Tim" to 110, "Prosek" to 60, "Ukupno" to 64, "Najb." to 52, "Najg." to 52, "Konz." to 56)
-                Row(Modifier.padding(bottom = 6.dp)) {
-                    header.forEachIndexed { i, (h, w) ->
-                        Text(h, Modifier.width(w.dp), style = MaterialTheme.typography.labelSmall, color = App.colors.muted,
-                            textAlign = if (i == 0) TextAlign.Start else TextAlign.End)
-                    }
-                }
-                HorizontalDivider(color = App.colors.grid)
-                stats.sortedByDescending { it.avgNet }.forEach { s ->
-                    Row(Modifier.clickable { onTeam(s.entryId) }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Row(Modifier.width(110.dp), verticalAlignment = Alignment.CenterVertically) {
-                            TeamDot(teamColor(data, s.entryId))
-                            Spacer(Modifier.width(6.dp))
-                            Text(data.teamName(s.entryId), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                        Cell(Fmt.decimal(s.avgNet, 1), 60)
-                        Cell("${s.totalNet}", 64)
-                        Cell("${s.best?.second ?: "–"}", 52)
-                        Cell("${s.worst?.second ?: "–"}", 52)
-                        Cell(Fmt.decimal(s.stdDev, 1), 56)
-                    }
-                }
-            }
-        }
+private fun HeatmapCard(data: LeagueData) {
+    val gws = data.gws
+    val teams = data.debtTable.map { it.entryId }
+    SectionCard(title = "Plasman po kolu", subtitle = "${teams.size} = poslednji (plaća). Jača boja = gore.") {
+        PositionHeatmap(
+            rows = teams.map { id -> data.teamName(id) to gws.map { g -> g.outcome?.ranks?.get(id) } },
+            gws = gws.map { it.gw },
+            teamCount = teams.size,
+        )
     }
-}
-
-@Composable
-private fun Cell(text: String, width: Int) {
-    Text(text, Modifier.width(width.dp), style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.End, fontWeight = FontWeight.Medium)
 }

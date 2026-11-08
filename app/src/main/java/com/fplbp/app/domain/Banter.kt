@@ -103,13 +103,17 @@ object BanterEngine {
         val candidates = mutableListOf<Banter>()
         val title = "Kolo $gw · posle $dayLabel"
 
+        // A close bottom is only news if one of the teams involved still has players to come.
+        val stillOpen = { list: List<LiveTeam> -> list.any { it.remaining.isNotEmpty() } }
         if (lastTied.size > 1) {
-            candidates += Banter(title, "${joinSr(lastTied.map { it.name })} izjednačeni na dnu sa ${poena(last.net)}.", 4)
+            if (stillOpen(lastTied)) {
+                candidates += Banter(title, "${joinSr(lastTied.map { it.name })} izjednačeni na dnu sa ${poena(last.net)}.", 4)
+            }
         } else if (next != null) {
             val gap = next.net - last.net
-            if (gap <= 3) {
+            if (gap <= 3 && stillOpen(listOf(last, next))) {
                 candidates += Banter(title, "${last.name} i ${next.name}: samo ${poena(gap)} razlike u borbi za dno.", 4)
-            } else {
+            } else if (gap > 3) {
                 candidates += Banter(title, "${last.name} na dnu sa ${poena(last.net)}, ${poena(gap)} iza ostalih.", 1)
             }
         }

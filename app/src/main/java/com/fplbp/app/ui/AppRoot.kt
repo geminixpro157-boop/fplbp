@@ -63,13 +63,11 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.fplbp.app.R
 import com.fplbp.app.ui.components.EmptyState
-import com.fplbp.app.ui.screens.ChipsScreen
+import com.fplbp.app.ui.screens.CurrentGameweekScreen
 import com.fplbp.app.ui.screens.DebtScreen
 import com.fplbp.app.ui.screens.GameweekDetailScreen
-import com.fplbp.app.ui.screens.GameweeksScreen
-import com.fplbp.app.ui.screens.PlayersScreen
+import com.fplbp.app.ui.screens.SeasonScreen
 import com.fplbp.app.ui.screens.SettingsScreen
-import com.fplbp.app.ui.screens.StatsScreen
 import com.fplbp.app.ui.screens.TeamDetailScreen
 import com.fplbp.app.ui.share.ShareImage
 import com.fplbp.app.ui.theme.App
@@ -81,10 +79,8 @@ private data class Tab(val route: String, val label: String, @DrawableRes val ic
 
 private val tabs = listOf(
     Tab("dug", "Dug", R.drawable.ic_nav_debt),
-    Tab("kola", "Kola", R.drawable.ic_nav_rounds),
-    Tab("igraci", "Igrači", R.drawable.ic_nav_players),
-    Tab("cipovi", "Čipovi", R.drawable.ic_nav_chips),
-    Tab("statistika", "Statistika", R.drawable.ic_nav_stats),
+    Tab("kolo", "Kolo", R.drawable.ic_nav_rounds),
+    Tab("sezona", "Sezona", R.drawable.ic_nav_stats),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -103,7 +99,7 @@ fun AppRoot(vm: MainViewModel = viewModel()) {
     val title = when {
         route == "podesavanja" -> "Podešavanja"
         route.startsWith("tim") -> entry?.arguments?.getLong("id")?.let { data?.teamName(it) } ?: "Tim"
-        route.startsWith("kolo") -> "Kolo ${entry?.arguments?.getInt("gw") ?: ""}"
+        route.startsWith("kolo/") -> "Kolo ${entry?.arguments?.getInt("gw") ?: ""}"
         else -> data?.leagueName ?: "FPLBP"
     }
 
@@ -198,11 +194,11 @@ fun AppRoot(vm: MainViewModel = viewModel()) {
 
             PullToRefreshBox(isRefreshing = sync.running, onRefresh = vm::refresh, modifier = Modifier.fillMaxSize()) {
                 NavHost(nav, startDestination = "dug", modifier = Modifier.fillMaxSize()) {
-                    composable("dug") { DebtScreen(d, onTeam = { nav.navigate("tim/$it") }) }
-                    composable("kola") { GameweeksScreen(d, onGw = { nav.navigate("kolo/$it") }) }
-                    composable("igraci") { PlayersScreen(d) }
-                    composable("cipovi") { ChipsScreen(d) }
-                    composable("statistika") { StatsScreen(d, onTeam = { nav.navigate("tim/$it") }) }
+                    composable("dug") {
+                        DebtScreen(d, onTeam = { nav.navigate("tim/$it") }, onGw = { nav.navigate("kolo/$it") })
+                    }
+                    composable("kolo") { CurrentGameweekScreen(d) }
+                    composable("sezona") { SeasonScreen(d, onTeam = { nav.navigate("tim/$it") }) }
                     composable("tim/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
                         TeamDetailScreen(d, it.arguments!!.getLong("id"), onGw = { gw -> nav.navigate("kolo/$gw") })
                     }

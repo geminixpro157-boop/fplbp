@@ -224,6 +224,23 @@ class DomainTest {
         assertEquals("Sve se odlučuje u ponedeljak: Jovan ima Salah, Marko nema.", m.text)
     }
 
+    @Test fun noTightRaceWhenNobodyLeft() {
+        // Bottom two 1 point apart, but neither has players left: nothing to say about the race.
+        val none = BanterEngine.matchday(10, "subote", listOf(
+            BanterEngine.LiveTeam("Marko", 54, "Haaland", 10, true),
+            BanterEngine.LiveTeam("Jovan", 55, "Haaland", 10, true),
+            BanterEngine.LiveTeam("Petar", 62, "Haaland", 10, true, listOf(BanterEngine.Remaining(9, "Mbeumo", "nedelju"))),
+        ))
+        assertNull(none)
+        // Same scores, but Jovan still has a player to come: worth a message.
+        val open = BanterEngine.matchday(10, "subote", listOf(
+            BanterEngine.LiveTeam("Marko", 54, "Haaland", 10, true),
+            BanterEngine.LiveTeam("Jovan", 55, "Haaland", 10, true, listOf(BanterEngine.Remaining(9, "Mbeumo", "nedelju"))),
+            BanterEngine.LiveTeam("Petar", 62, "Haaland", 10, true),
+        ))
+        assertNotNull(open)
+    }
+
     @Test fun lastMatch() {
         val tie = BanterEngine.lastMatch(11, "LIV–MCI", listOf(
             BanterEngine.BottomTeam("Marko", 41, listOf("Salah")),

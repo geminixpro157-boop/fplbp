@@ -71,17 +71,6 @@ fun TeamDetailScreen(data: LeagueData, entryId: Long, onGw: (Int) -> Unit) {
                     )
                 }
             }
-            item {
-                SectionCard(title = "Bodovi naspram proseka lige") {
-                    val series = listOf(
-                        ChartSeries(team.name, color, finals.map { g -> g.scores.first { it.entryId == entryId }.net.toDouble() }),
-                        ChartSeries("Prosek lige", App.colors.muted, finals.map { SeasonStats.leagueAverage(it.toScores()) }, dashed = true),
-                    )
-                    LineChart(finals.map { "${it.gw}" }, series, yFormat = { Fmt.decimal(it, 0) }, tooltipTitle = { "Kolo ${finals[it].gw}" })
-                    Spacer(Modifier.height(8.dp))
-                    Legend(series.map { it.name to it.color }, dashedLast = true)
-                }
-            }
         }
         item {
             SectionCard(title = "Kola u kojima je platio", subtitle = if (losses.isEmpty()) "Još nijedno. Za sada." else null) {

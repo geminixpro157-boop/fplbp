@@ -164,21 +164,10 @@ private fun androidx.compose.foundation.lazy.LazyListScope.leagueView(data: Leag
     // Sum over all teams.
     val byPlayer = HashMap<Int, MutableList<Pair<Long, PlayerContribution>>>()
     data.contributions.forEach { (team, list) -> list.forEach { byPlayer.getOrPut(it.element) { mutableListOf() } += team to it } }
-    val top = byPlayer.entries.map { it.key to it.value.sumOf { p -> p.second.total } }.sortedByDescending { it.second }.take(10)
     val differentials = byPlayer.entries.filter { it.value.size == 1 }
         .map { Triple(it.key, it.value[0].first, it.value[0].second.total) }
         .sortedByDescending { it.third }.take(8)
 
-    item {
-        SectionCard(title = "Najvredniji igrači lige", subtitle = "Zbir bodova koje je doneo svim timovima") {
-            HBarChart(top.map { (el, pts) ->
-                BarItem(
-                    label = data.playerName(el), value = pts.toDouble(), color = App.colors.gold, valueText = "$pts",
-                    sub = byPlayer[el].orEmpty().joinToString { data.teamName(it.first) },
-                )
-            }, labelWidth = 110.dp)
-        }
-    }
     if (differentials.isNotEmpty()) item {
         SectionCard(title = "Diferencijali", subtitle = "Igrači koje je imao samo jedan tim") {
             HBarChart(differentials.map { (el, team, pts) ->

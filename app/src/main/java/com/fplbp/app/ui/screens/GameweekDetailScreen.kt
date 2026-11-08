@@ -14,14 +14,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -47,16 +52,47 @@ import com.fplbp.app.ui.components.teamColor
 import com.fplbp.app.ui.theme.App
 
 @Composable
-fun GameweekDetailScreen(data: LeagueData, gw: Int) {
+fun GameweekDetailScreen(data: LeagueData, gw: Int, onChangeGw: ((Int) -> Unit)? = null) {
     val v = data.gws.firstOrNull { it.gw == gw } ?: return EmptyState("Nema podataka za ovo kolo.")
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        if (onChangeGw != null) item { GwSwitcher(data, v.gw, onChangeGw) }
         item { Header(data, v) }
         if (v.lineups.size >= 2) item { Differentials(data, v) }
         item { Lineups(data, v) }
+    }
+}
+
+/** The Kolo tab: opens on the current gameweek, arrows step through the others. */
+@Composable
+fun CurrentGameweekScreen(data: LeagueData) {
+    val current = data.liveGw?.gw ?: data.gws.lastOrNull()?.gw ?: return EmptyState("Još nema odigranih kola.")
+    var gw by rememberSaveable(current) { mutableIntStateOf(current) }
+    GameweekDetailScreen(data, gw, onChangeGw = { gw = it })
+}
+
+@Composable
+private fun GwSwitcher(data: LeagueData, gw: Int, onChange: (Int) -> Unit) {
+    val ids = data.gws.map { it.gw }
+    val idx = ids.indexOf(gw)
+    val current = data.liveGw?.gw ?: ids.lastOrNull()
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = { onChange(ids[idx - 1]) }, enabled = idx > 0) {
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Prethodno kolo")
+        }
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Kolo $gw", style = MaterialTheme.typography.titleLarge)
+            if (gw != current && current != null) {
+                Text("Nazad na tekuće (Kolo $current)", style = MaterialTheme.typography.labelMedium, color = App.colors.gold,
+                    modifier = Modifier.clickable { onChange(current) }.padding(2.dp))
+            }
+        }
+        IconButton(onClick = { onChange(ids[idx + 1]) }, enabled = idx in 0 until ids.lastIndex) {
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Sledeće kolo")
+        }
     }
 }
 

@@ -52,17 +52,53 @@ import com.fplbp.app.ui.components.teamColor
 import com.fplbp.app.ui.theme.App
 import com.fplbp.app.ui.time
 
+/**
+ * During a gameweek the live card comes first; between gameweeks the last result does.
+ * The debt table always follows right after.
+ */
 @Composable
-fun DebtScreen(data: LeagueData, onTeam: (Long) -> Unit) {
+fun DebtScreen(data: LeagueData, onTeam: (Long) -> Unit, onGw: (Int) -> Unit) {
+    val live = data.liveGw
+    val lastFinal = data.gws.lastOrNull { it.isFinal }
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { PotCard(data) }
-        data.liveGw?.let { live -> item { LiveCard(data, live) } }
+        if (live != null) item { LiveCard(data, live) }
+        else if (lastFinal != null) item { LastResultCard(data, lastFinal, onGw) }
         item { DebtTable(data, onTeam) }
+        item { PotCard(data) }
         if (data.raceGws.size >= 2) item { DebtRace(data) }
+    }
+}
+
+@Composable
+private fun LastResultCard(data: LeagueData, v: GwView, onGw: (Int) -> Unit) {
+    val o = v.outcome ?: return
+    val names = o.losers.map { data.teamName(it) }
+    SectionCard(Modifier.clickable { onGw(v.gw) }, title = "Kolo ${v.gw} · završeno", subtitle = "Tapni za detalje kola", accent = true) {
+        Text(
+            if (o.losers.size == 1) "${names[0]} je platio ${Fmt.rsdShort(o.share)}"
+            else "${joinSr(names)} dele po ${Fmt.rsdShort(o.share)}",
+            style = MaterialTheme.typography.titleMedium, color = App.colors.debt,
+        )
+        o.gapToSafety?.let {
+            Text("${poena(it)} do spasa", style = MaterialTheme.typography.bodySmall, color = App.colors.muted)
+        }
+        Spacer(Modifier.height(8.dp))
+        v.scores.sortedByDescending { it.net }.forEach { s ->
+            val loser = s.entryId in o.losers
+            Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                TeamDot(teamColor(data, s.entryId))
+                Spacer(Modifier.width(8.dp))
+                Text(data.teamName(s.entryId), Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (loser) App.colors.debt else MaterialTheme.colorScheme.onSurface)
+                if (s.transferCost > 0) Text("−${s.transferCost}  ", style = MaterialTheme.typography.labelMedium, color = App.colors.debt)
+                Text("${s.net}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            }
+        }
     }
 }
 
@@ -76,7 +112,7 @@ fun debtColor(total: Rational, max: Rational): Color = when {
 
 @Composable
 private fun PotCard(data: LeagueData) {
-    SectionCard(accent = true) {
+    SectionCard {
         Text("Ukupno u kasi za večeru", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
         Text(Fmt.rsd(data.pot), style = MaterialTheme.typography.headlineMedium, color = App.colors.gold)
         Text(
