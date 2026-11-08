@@ -112,6 +112,8 @@ fun AppRoot(vm: MainViewModel = viewModel()) {
     Scaffold(
         modifier = Modifier.background(bgBrush),
         containerColor = Color.Transparent,
+        // Transparent container has no matching text color, so set it explicitly (else it falls back to black).
+        contentColor = MaterialTheme.colorScheme.onBackground,
         topBar = {
             TopAppBar(
                 title = { Text(title, fontWeight = FontWeight.Bold) },
