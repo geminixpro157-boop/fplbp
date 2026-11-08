@@ -23,9 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -48,17 +47,17 @@ fun SectionCard(
     modifier: Modifier = Modifier,
     title: String? = null,
     subtitle: String? = null,
-    /** Faint pitch markings in the background (used on the top cards only). */
-    pitch: Boolean = false,
+    /** Soft gold gradient in the background (used on the top cards only). */
+    accent: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val lines = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+    val glow = App.colors.gold.copy(alpha = 0.16f)
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
-        Column(Modifier.then(if (pitch) Modifier.drawBehind { drawPitch(lines) } else Modifier).padding(16.dp)) {
+        Column(Modifier.then(if (accent) Modifier.drawBehind { drawAccent(glow) } else Modifier).padding(16.dp)) {
             if (title != null) {
                 Text(title, style = MaterialTheme.typography.titleMedium)
                 if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = App.colors.muted)
@@ -141,29 +140,13 @@ fun StatTile(label: String, value: String, modifier: Modifier = Modifier, valueC
     }
 }
 
-/** Horizontal pitch: outline, halfway line, center circle and both penalty boxes. */
-private fun DrawScope.drawPitch(color: Color) {
-    val w = 1.5.dp.toPx()
-    val inset = 10.dp.toPx()
-    val left = inset
-    val top = inset
-    val right = size.width - inset
-    val bottom = size.height - inset
-    val h = bottom - top
-    val stroke = Stroke(width = w)
-    drawRect(color, topLeft = Offset(left, top), size = Size(right - left, h), style = stroke)
-    val cx = size.width / 2
-    drawLine(color, Offset(cx, top), Offset(cx, bottom), w)
-    drawCircle(color, radius = h * 0.26f, center = Offset(cx, size.height / 2), style = stroke)
-    drawCircle(color, radius = w * 1.6f, center = Offset(cx, size.height / 2))
-    val boxW = h * 0.32f
-    val boxH = h * 0.56f
-    val boxTop = size.height / 2 - boxH / 2
-    drawRect(color, topLeft = Offset(left, boxTop), size = Size(boxW, boxH), style = stroke)
-    drawRect(color, topLeft = Offset(right - boxW, boxTop), size = Size(boxW, boxH), style = stroke)
-    val goalW = boxW * 0.4f
-    val goalH = boxH * 0.5f
-    val goalTop = size.height / 2 - goalH / 2
-    drawRect(color, topLeft = Offset(left, goalTop), size = Size(goalW, goalH), style = stroke)
-    drawRect(color, topLeft = Offset(right - goalW, goalTop), size = Size(goalW, goalH), style = stroke)
+/** Diagonal glow from the top-left corner fading out toward the bottom-right. */
+private fun DrawScope.drawAccent(color: Color) {
+    drawRect(
+        Brush.linearGradient(
+            colors = listOf(color, color.copy(alpha = 0f)),
+            start = Offset.Zero,
+            end = Offset(size.width * 0.85f, size.height * 1.1f),
+        )
+    )
 }

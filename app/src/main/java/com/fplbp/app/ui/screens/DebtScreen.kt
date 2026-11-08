@@ -76,7 +76,7 @@ fun debtColor(total: Rational, max: Rational): Color = when {
 
 @Composable
 private fun PotCard(data: LeagueData) {
-    SectionCard(pitch = true) {
+    SectionCard(accent = true) {
         Text("Ukupno u kasi za večeru", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
         Text(Fmt.rsd(data.pot), style = MaterialTheme.typography.headlineMedium, color = App.colors.gold)
         Text(
@@ -126,7 +126,7 @@ private fun LiveCard(data: LeagueData, v: GwView) {
         if (v.fixturesTotal > 0) append("Odigrano ${v.fixturesDone}/${v.fixturesTotal} utakmica · ")
         append("osveženo ${time(data.lastSync).substringAfter(' ')}")
     }
-    SectionCard(Modifier.clickable { open = !open }, title = title, subtitle = subtitle, pitch = true) {
+    SectionCard(Modifier.clickable { open = !open }, title = title, subtitle = subtitle, accent = true) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusBadge(v.status)
             Spacer(Modifier.width(8.dp))
