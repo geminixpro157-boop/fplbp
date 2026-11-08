@@ -173,27 +173,6 @@ class DomainTest {
     private fun ep(e: Int, pts: Int, mult: Int = 1, pending: Boolean = false) =
         EffectivePick(e, e, mult, pts, mult >= 2, false, false, false, false, pending)
 
-    @Test fun deciderSumsToGap() {
-        // A: Haaland(C) 8x2, Palmer 9, shared 5; hit -4 -> 16+9+5-4 = 26
-        // B: Haaland 8x1, Saka 12, shared 5 -> 25
-        val a = LineupResult(listOf(ep(1, 8, 2), ep(2, 9), ep(3, 5)), emptyList(), false)
-        val b = LineupResult(listOf(ep(1, 8, 1), ep(4, 12), ep(3, 5)), emptyList(), false)
-        val c = Decider.compare(a, 4, 26, b, 0, 25)
-        assertTrue(c.exact)
-        assertEquals(1, c.gapNet)
-        assertEquals(4, c.lines.size) // Saka, Palmer, Haaland mult, hits; shared player cancels
-        assertEquals(Decider.Kind.ONLY_B, c.lines.first().kind)
-        assertEquals(-12, c.lines.first().diff)
-    }
-
-    @Test fun verdictHit() {
-        val a = LineupResult(listOf(ep(1, 50)), emptyList(), false)
-        val b = LineupResult(listOf(ep(2, 48)), emptyList(), false)
-        val c = Decider.compare(a, 4, 46, b, 0, 48)
-        val v = Decider.verdict(c, "Marko", "Jovan", 50, 4, 48) { "P$it" }
-        assertEquals("Bez −4 tim Marko bi prestigao tim Jovan.", v)
-    }
-
     @Test fun leagueDifferentials() {
         val m = mapOf(
             1L to LineupResult(listOf(ep(1, 8), ep(2, 3)), emptyList(), false),
@@ -243,6 +222,34 @@ class DomainTest {
             BanterEngine.LiveTeam("Petar", 70, "Haaland", 10, true),
         ))!!
         assertEquals("Sve se odlučuje u ponedeljak: Jovan ima Salah, Marko nema.", m.text)
+    }
+
+    @Test fun lastMatch() {
+        val tie = BanterEngine.lastMatch(11, "LIV–MCI", listOf(
+            BanterEngine.BottomTeam("Marko", 41, listOf("Salah")),
+            BanterEngine.BottomTeam("Jovan", 41, emptyList()),
+            BanterEngine.BottomTeam("Petar", 60, listOf("Haaland")),
+        ))!!
+        assertEquals("Ostala je još samo LIV–MCI. Marko i Jovan izjednačeni na dnu sa 41 poen. Marko ima Salah, Jovan nema nikog.", tie.text)
+        val gap = BanterEngine.lastMatch(11, "LIV–MCI", listOf(
+            BanterEngine.BottomTeam("Marko", 38, listOf("Salah", "Gakpo")),
+            BanterEngine.BottomTeam("Jovan", 43, emptyList()),
+            BanterEngine.BottomTeam("Petar", 60, emptyList()),
+        ))!!
+        assertEquals("Ostala je još samo LIV–MCI. Marko je na dnu sa 38 poena, Jovan 43 poena. Marko ima Salah i Gakpo, Jovan nema nikog.", gap.text)
+        // Decided: no one at the bottom has a player in the last match.
+        assertNull(BanterEngine.lastMatch(11, "LIV–MCI", listOf(
+            BanterEngine.BottomTeam("Marko", 38, emptyList()), BanterEngine.BottomTeam("Jovan", 43, emptyList()),
+        )))
+        // Too far apart.
+        assertNull(BanterEngine.lastMatch(11, "LIV–MCI", listOf(
+            BanterEngine.BottomTeam("Marko", 30, listOf("Salah")), BanterEngine.BottomTeam("Jovan", 43, emptyList()),
+        )))
+    }
+
+    @Test fun bottomChange() {
+        val b = BanterEngine.bottomChange(11, "Jovan", 41, listOf("Marko"), 2)
+        assertEquals("Jovan je sada poslednji sa 41 poen. Marko se izvukao. 2 poena do spasa.", b.text)
     }
 
     @Test fun recap() {

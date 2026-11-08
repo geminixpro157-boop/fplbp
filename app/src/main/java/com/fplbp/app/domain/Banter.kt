@@ -162,6 +162,45 @@ object BanterEngine {
         return null
     }
 
+    // ---------- One match left ----------
+
+    /** A team at the bottom and its counting players in the last remaining match. */
+    data class BottomTeam(val name: String, val net: Int, val playersInMatch: List<String>)
+
+    /**
+     * Only one match of the gameweek is left (about to start or being played) and the bottom is tight:
+     * tied, or within [maxGap] points with at least one of them still having a player in it.
+     */
+    fun lastMatch(gw: Int, match: String, teams: List<BottomTeam>, maxGap: Int = 8): Banter? {
+        if (teams.size < 2) return null
+        val sorted = teams.sortedBy { it.net }
+        val low = sorted.first().net
+        val tied = sorted.filter { it.net == low }
+        val involved = if (tied.size > 1) tied else sorted.filter { it.net <= sorted.first { t -> t.net > low }.net }
+        val gap = if (tied.size > 1) 0 else involved.last().net - low
+        val anyPlayers = involved.any { it.playersInMatch.isNotEmpty() }
+        if (tied.size == 1 && (gap > maxGap || !anyPlayers)) return null
+
+        val title = "Kolo $gw · još jedna utakmica"
+        val state = if (tied.size > 1) "${joinSr(tied.map { it.name })} izjednačeni na dnu sa ${poena(low)}."
+        else "${sorted.first().name} je na dnu sa ${poena(low)}, ${joinSr(involved.drop(1).map { it.name })} ${poena(involved.last().net)}."
+        val who = when {
+            !anyPlayers -> "Niko od njih nema igrača u njoj."
+            else -> involved.joinToString(", ") { t ->
+                if (t.playersInMatch.isEmpty()) "${t.name} nema nikog" else "${t.name} ima ${joinSr(t.playersInMatch)}"
+            } + "."
+        }
+        return Banter(title, "Ostala je još samo $match. $state $who", 6)
+    }
+
+    // ---------- Change at the bottom ----------
+
+    fun bottomChange(gw: Int, newLast: String, newNet: Int, escaped: List<String>, gap: Int?): Banter {
+        val esc = if (escaped.isEmpty()) "" else " ${joinSr(escaped)} ${if (escaped.size > 1) "su se izvukli" else "se izvukao"}."
+        val tail = gap?.let { " ${poena(it)} do spasa." } ?: ""
+        return Banter("Kolo $gw · preokret", "$newLast je sada poslednji sa ${poena(newNet)}.$esc$tail", 5)
+    }
+
     // ---------- Gameweek settled ----------
 
     data class SettleTeam(

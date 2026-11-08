@@ -2,6 +2,8 @@ package com.fplbp.app.data
 
 import com.fplbp.app.data.db.ChipWindowEntity
 import com.fplbp.app.data.db.ClubEntity
+import com.fplbp.app.data.db.FixtureEntity
+import com.fplbp.app.data.db.PlayerGwStatEntity
 import com.fplbp.app.data.db.PlayerEntity
 import com.fplbp.app.data.db.TeamEntity
 import com.fplbp.app.domain.DebtRow
@@ -25,10 +27,33 @@ data class GwView(
     val verified: Map<Long, Boolean>,
     val fixturesDone: Int,
     val fixturesTotal: Int,
+    val fixtures: List<FixtureEntity> = emptyList(),
+    /** element -> points breakdown lines for this GW. */
+    val stats: Map<Int, List<PlayerGwStatEntity>> = emptyMap(),
+    /** element -> predicted bonus (not yet confirmed by FPL). */
+    val provisionalBonus: Map<Int, Int> = emptyMap(),
 ) {
     val isFinal get() = status == GwStatus.FINAL
     fun toScores() = GwScores(gw, isFinal, scores)
+
+    /** Match status of a club in this GW (handles blanks and double gameweeks). */
+    fun clubState(clubId: Int?): ClubState {
+        if (clubId == null || isFinal) return ClubState(PlayState.DONE, null)
+        val fx = fixtures.filter { it.teamH == clubId || it.teamA == clubId }
+        if (fx.isEmpty()) return ClubState(if (fixtures.isEmpty()) PlayState.DONE else PlayState.BLANK, null)
+        val open = fx.filter { !it.finished && !it.finishedProvisional }
+        return when {
+            open.isEmpty() -> ClubState(PlayState.DONE, null)
+            open.any { it.started } -> ClubState(PlayState.LIVE, open.filter { !it.started }.mapNotNull { it.kickoff }.minOrNull())
+            else -> ClubState(PlayState.UPCOMING, open.mapNotNull { it.kickoff }.minOrNull())
+        }
+    }
 }
+
+enum class PlayState { DONE, LIVE, UPCOMING, BLANK }
+
+/** [nextKickoff] = kickoff of the club's next unstarted match in this GW, if any. */
+data class ClubState(val state: PlayState, val nextKickoff: Long?)
 
 data class PlayerContribution(
     val element: Int,
@@ -80,7 +105,9 @@ data class LeagueData(
 
 /** Points categories shown in the app (FPL explain identifiers grouped). */
 object Category {
-    val ORDER = listOf("goals", "assists", "cs", "bonus", "minutes", "defcon", "saves", "pens", "minus")
+    /** Positive categories, in fixed order (colors follow this order, never the rank). */
+    val POSITIVE = listOf("goals", "assists", "cs", "bonus", "minutes", "defcon", "saves", "other")
+    val MINUS = listOf("yellow", "red", "conceded", "own_goals", "pen_missed")
 
     fun of(identifier: String): String = when (identifier) {
         "goals_scored" -> "goals"
@@ -89,11 +116,16 @@ object Category {
         "bonus" -> "bonus"
         "minutes" -> "minutes"
         "defensive_contribution" -> "defcon"
-        "saves" -> "saves"
-        "penalties_saved" -> "pens"
-        "yellow_cards", "red_cards", "own_goals", "penalties_missed", "goals_conceded" -> "minus"
+        "saves", "penalties_saved" -> "saves"
+        "yellow_cards" -> "yellow"
+        "red_cards" -> "red"
+        "goals_conceded" -> "conceded"
+        "own_goals" -> "own_goals"
+        "penalties_missed" -> "pen_missed"
         else -> "other"
     }
+
+    fun isMinus(cat: String) = cat in MINUS
 
     fun label(cat: String): String = when (cat) {
         "goals" -> "Golovi"
@@ -102,10 +134,26 @@ object Category {
         "bonus" -> "Bonus"
         "minutes" -> "Minutaža"
         "defcon" -> "Def. doprinos"
-        "saves" -> "Odbrane"
-        "pens" -> "Odbranjeni penali"
-        "minus" -> "Minusi"
+        "saves" -> "Odbrane i penali"
+        "yellow" -> "Žuti kartoni"
+        "red" -> "Crveni kartoni"
+        "conceded" -> "Primljeni golovi"
+        "own_goals" -> "Autogolovi"
+        "pen_missed" -> "Promašeni penali"
         else -> "Ostalo"
+    }
+
+    /** Short labels for one-line breakdowns. */
+    fun short(cat: String): String = when (cat) {
+        "goals" -> "G"
+        "assists" -> "A"
+        "cs" -> "ČM"
+        "bonus" -> "B"
+        "minutes" -> "Min"
+        "defcon" -> "DEF"
+        "saves" -> "Odb"
+        "other" -> "Ost"
+        else -> "−"
     }
 }
 

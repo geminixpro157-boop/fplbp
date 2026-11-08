@@ -39,6 +39,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** True while a match of the current gameweek is being played (or just kicked off). */
+    suspend fun hasLiveMatch(): Boolean {
+        val now = System.currentTimeMillis()
+        return app.database.dao().fixtures().any { f ->
+            if (f.finished || f.finishedProvisional) return@any false
+            val k = f.kickoff ?: return@any false
+            f.started || (now >= k && now - k < 3 * 3_600_000L)
+        }
+    }
+
     fun checkUpdate() = viewModelScope.launch { update.value = app.updates.check(force = true) }
 
     fun changeLeague(id: Long) = viewModelScope.launch {

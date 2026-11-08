@@ -54,6 +54,25 @@ class Prefs(context: Context) {
         get() = sp.getString("latestReleaseUrl", "") ?: ""
         set(v) = sp.edit().putString("latestReleaseUrl", v).apply()
 
+    /** Last time the heavy bootstrap-static file was fetched. */
+    var lastBootstrap: Long
+        get() = sp.getLong("lastBootstrap", 0)
+        set(v) = sp.edit().putLong("lastBootstrap", v).apply()
+
+    /** Notifications sent today (cap of 3 per day), keyed by "yyyy-MM-dd". */
+    var notifDay: String
+        get() = sp.getString("notifDay", "") ?: ""
+        set(v) = sp.edit().putString("notifDay", v).apply()
+
+    var notifCount: Int
+        get() = sp.getInt("notifCount", 0)
+        set(v) = sp.edit().putInt("notifCount", v).apply()
+
+    /** "gw:id,id" of the team(s) last seen at the bottom during a live GW. */
+    var bottomState: String
+        get() = sp.getString("bottomState", "") ?: ""
+        set(v) = sp.edit().putString("bottomState", v).apply()
+
     var batteryHintDismissed: Boolean
         get() = sp.getBoolean("batteryHintDismissed", false)
         set(v) = sp.edit().putBoolean("batteryHintDismissed", v).apply()

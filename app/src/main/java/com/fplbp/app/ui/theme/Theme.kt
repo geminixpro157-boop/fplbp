@@ -23,6 +23,8 @@ data class AppColors(
     val muted: Color,
     val grid: Color,
     val chartSurface: Color,
+    /** Top of the app background gradient (fades into the background color). */
+    val bgTop: Color,
     /** Categorical series, fixed order (validated for CVD separation). */
     val series: List<Color>,
     /** Sequential ramp for the position heatmap (light -> strong). */
@@ -37,6 +39,7 @@ private val DarkApp = AppColors(
     muted = Color(0xFF8A96A3),
     grid = Color(0xFF2A3440),
     chartSurface = Color(0xFF18202A),
+    bgTop = Color(0xFF241F12),
     series = listOf(
         Color(0xFF3987E5), Color(0xFFD95926), Color(0xFF199E70), Color(0xFFC98500),
         Color(0xFFD55181), Color(0xFF008300), Color(0xFF9085E9), Color(0xFFE66767),
@@ -52,6 +55,7 @@ private val LightApp = AppColors(
     muted = Color(0xFF5F6B78),
     grid = Color(0xFFE2E6EA),
     chartSurface = Color(0xFFFFFFFF),
+    bgTop = Color(0xFFFFEFCC),
     series = listOf(
         Color(0xFF2A78D6), Color(0xFFEB6834), Color(0xFF1BAF7A), Color(0xFFEDA100),
         Color(0xFFE87BA4), Color(0xFF008300), Color(0xFF6250D6), Color(0xFFE34948),

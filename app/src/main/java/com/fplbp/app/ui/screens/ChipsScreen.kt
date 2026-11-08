@@ -90,29 +90,6 @@ fun ChipsScreen(data: LeagueData) {
                 }
             }
         }
-        item {
-            SectionCard(title = "Preostalo") {
-                data.teams.sortedByDescending { t -> data.chipGrid[t.entryId].orEmpty().count { it.usedGw == null && !it.expired } }.forEach { t ->
-                    val left = data.chipGrid[t.entryId].orEmpty().filter { it.usedGw == null && !it.expired }
-                    Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        TeamDot(teamColor(data, t.entryId))
-                        Spacer(Modifier.width(8.dp))
-                        Text(t.name, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(
-                            if (left.isEmpty()) "ništa" else left.joinToString(" ") { Chips.short(it.window.name) },
-                            style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                }
-            }
-        }
-        item {
-            SectionCard(title = "Šta je šta") {
-                listOf("wildcard", "freehit", "bboost", "3xc").forEach {
-                    Text("${Chips.short(it)} · ${Chips.label(it)}", style = MaterialTheme.typography.bodySmall, color = App.colors.muted)
-                }
-            }
-        }
     }
 }
 

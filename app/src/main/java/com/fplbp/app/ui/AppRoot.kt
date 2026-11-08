@@ -20,7 +20,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,9 +41,13 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -64,6 +71,7 @@ import com.fplbp.app.ui.screens.PlayersScreen
 import com.fplbp.app.ui.screens.SettingsScreen
 import com.fplbp.app.ui.screens.StatsScreen
 import com.fplbp.app.ui.screens.TeamDetailScreen
+import com.fplbp.app.ui.share.ShareImage
 import com.fplbp.app.ui.theme.App
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -99,7 +107,15 @@ fun AppRoot(vm: MainViewModel = viewModel()) {
         else -> data?.leagueName ?: "FPLBP"
     }
 
+    val bgBrush = Brush.verticalGradient(
+        0f to App.colors.bgTop,
+        0.45f to MaterialTheme.colorScheme.background,
+        1f to MaterialTheme.colorScheme.background,
+    )
+    var shareMenu by remember { mutableStateOf(false) }
     Scaffold(
+        modifier = Modifier.background(bgBrush),
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text(title, fontWeight = FontWeight.Bold) },
@@ -109,11 +125,29 @@ fun AppRoot(vm: MainViewModel = viewModel()) {
                     }
                 },
                 actions = {
+                    val d = data
+                    if (isTab && d != null) Box {
+                        IconButton(onClick = { shareMenu = true }) {
+                            Icon(Icons.Default.Share, contentDescription = "Podeli sliku")
+                        }
+                        DropdownMenu(expanded = shareMenu, onDismissRequest = { shareMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Tabela dugovanja") },
+                                onClick = { shareMenu = false; ShareImage.shareDebtTable(context, d) },
+                            )
+                            ShareImage.shareableGw(d)?.let { gv ->
+                                DropdownMenuItem(
+                                    text = { Text("Kolo ${gv.gw}") },
+                                    onClick = { shareMenu = false; ShareImage.shareGameweek(context, d, gv) },
+                                )
+                            }
+                        }
+                    }
                     if (isTab) IconButton(onClick = { nav.navigate("podesavanja") }) {
                         Icon(Icons.Default.Settings, contentDescription = "Podešavanja")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
             )
         },
         bottomBar = {

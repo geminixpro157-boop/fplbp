@@ -91,29 +91,44 @@ class Repository(
         val leagueId = prefs.leagueId
         val now = System.currentTimeMillis()
 
-        // 1. Static data: gameweeks, clubs, players, chip windows.
-        val boot = api.bootstrap()
-        val known = dao.gameweeks().associateBy { it.id }
-        val gws = boot.events.map {
-            GameweekEntity(
-                id = it.id,
-                name = it.name,
-                deadline = parseTime(it.deadlineTime) ?: Long.MAX_VALUE,
-                finished = it.finished,
-                dataChecked = it.dataChecked,
-                isCurrent = it.isCurrent,
-                finalLocal = known[it.id]?.finalLocal ?: false,
-            )
+        // 1. Static data (gameweeks, clubs, players, chip windows) is ~1-2 MB, so it is fetched only
+        //    once a day, when a new gameweek starts, or while a finished GW waits for FPL's confirmation.
+        val stored = dao.gameweeks()
+        val since = prefs.lastBootstrap
+        val storedFixtures = dao.fixtures()
+        val awaitingConfirm = stored.any { g ->
+            g.deadline <= now && !g.finalLocal &&
+                storedFixtures.filter { it.gw == g.id }.let { fx -> fx.isNotEmpty() && fx.all { it.finished } }
         }
-        db.withTransaction {
-            dao.upsertGameweeks(gws)
-            dao.upsertClubs(boot.teams.map { ClubEntity(it.id, it.name, it.shortName) })
-            dao.upsertPlayers(boot.elements.map { PlayerEntity(it.id, it.webName, it.team, it.elementType) })
-            if (boot.chips.isNotEmpty()) {
-                dao.clearChipWindows()
-                dao.insertChipWindows(boot.chips.map { ChipWindowEntity(it.name, it.number, it.startEvent, it.stopEvent) })
+        val needBootstrap = stored.isEmpty() || now - since > DAY ||
+            stored.any { it.deadline in (since + 1)..now } ||
+            (awaitingConfirm && now - since > 20 * MINUTE)
+        if (needBootstrap) {
+            val boot = api.bootstrap()
+            val known = stored.associateBy { it.id }
+            val rows = boot.events.map {
+                GameweekEntity(
+                    id = it.id,
+                    name = it.name,
+                    deadline = parseTime(it.deadlineTime) ?: Long.MAX_VALUE,
+                    finished = it.finished,
+                    dataChecked = it.dataChecked,
+                    isCurrent = it.isCurrent,
+                    finalLocal = known[it.id]?.finalLocal ?: false,
+                )
             }
+            db.withTransaction {
+                dao.upsertGameweeks(rows)
+                dao.upsertClubs(boot.teams.map { ClubEntity(it.id, it.name, it.shortName) })
+                dao.upsertPlayers(boot.elements.map { PlayerEntity(it.id, it.webName, it.team, it.elementType) })
+                if (boot.chips.isNotEmpty()) {
+                    dao.clearChipWindows()
+                    dao.insertChipWindows(boot.chips.map { ChipWindowEntity(it.name, it.number, it.startEvent, it.stopEvent) })
+                }
+            }
+            prefs.lastBootstrap = now
         }
+        val gws = dao.gameweeks()
         progress(0.05f, "Učitavanje lige…")
 
         // 2. League members.
@@ -254,7 +269,9 @@ class Repository(
         val teamGws = dao.teamGws().filter { it.entryId in teamIds }
         val picks = dao.picks().filter { it.entryId in teamIds }
         val playerGws = dao.playerGws().associateBy { it.gw to it.element }
-        val stats = dao.stats().groupBy { it.gw to it.element }
+        val allStats = dao.stats()
+        val stats = allStats.groupBy { it.gw to it.element }
+        val statsByGw = allStats.groupBy { it.gw }
         val fixtures = dao.fixtures().groupBy { it.gw }
         val provBonus = dao.provisionalBonus().associateBy { it.gw to it.element }
         val players = dao.players().associateBy { it.id }
@@ -323,6 +340,9 @@ class Repository(
                 verified = verified,
                 fixturesDone = gwFixtures.count { it.finished || it.finishedProvisional },
                 fixturesTotal = gwFixtures.size,
+                fixtures = gwFixtures,
+                stats = statsByGw[gw.id].orEmpty().groupBy { it.element },
+                provisionalBonus = provBonus.values.filter { it.gw == gw.id }.associate { it.element to it.points },
             )
         }
 
@@ -397,6 +417,9 @@ class Repository(
     }
 
     companion object {
+        private const val MINUTE = 60_000L
+        private const val DAY = 24 * 60 * MINUTE
+
         fun parseTime(s: String?): Long? = s?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
     }
 }

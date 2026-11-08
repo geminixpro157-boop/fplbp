@@ -50,8 +50,9 @@ fun TeamDetailScreen(data: LeagueData, entryId: Long, onGw: (Int) -> Unit) {
                 Text(team.manager, style = MaterialTheme.typography.bodyMedium, color = App.colors.muted)
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val max = data.debtTable.maxOfOrNull { it.total } ?: Rational.ZERO
                     StatTile("Dug", debt?.let { Fmt.rsdShort(it.total) } ?: "0 RSD", Modifier.weight(1f),
-                        valueColor = if ((debt?.total ?: Rational.ZERO) > Rational.ZERO) App.colors.debt else App.colors.safe)
+                        valueColor = debtColor(debt?.total ?: Rational.ZERO, max))
                     StatTile("Puta zadnji", "${debt?.timesLast ?: 0}", Modifier.weight(1f))
                     StatTile("Prosek", st?.let { Fmt.decimal(it.avgNet, 1) } ?: "–", Modifier.weight(1f))
                 }

@@ -13,10 +13,10 @@ Android aplikacija za mini ligu FPLBP (FPL liga 68740). Prati ko duguje 350 RSD 
 
 | Ekran | Sadržaj |
 |---|---|
-| **Dug** | Kasa za večeru, opasna zona tekućeg kola, tabela duga, grafikon "trka za dug" |
-| **Kola** | Sva kola sa neto bodovima i hitovima; detalj kola: **Presudilo** (samo ono po čemu su se dva tima razlikovala, sabira se tačno u razliku), **Samo kod njega** (igrači koje niko drugi nije imao) i postave na klik; grafikoni bodova i plasmana |
-| **Igrači** | Odakle dolaze bodovi (golovi, asistencije, čista mreža, bonus…), top 10 igrača, kapiteni po kolu, najvredniji igrači lige i diferencijali |
-| **Čipovi** | Ko je koji čip iskoristio i šta je još ostalo (prozori čipova se čitaju iz FPL-a, ne hardkoduju se) |
+| **Dug** | Kasa za večeru, **Uživo · Kolo X** (tapni: ko je završio, ko igra, ko tek igra i kada), tabela dugovanja, dugovanje kroz sezonu |
+| **Kola** | Sva kola sa neto bodovima i hitovima; detalj kola: **Samo kod njega** (igrači koje niko drugi nije imao) i postave, svaki igrač sa ikonama (golovi, asistencije, čista mreža, bonus, odbrane, kartoni), minutama ili vremenom utakmice; tapni igrača za tačne bodove |
+| **Igrači** | Odakle dolaze bodovi (krug), minusi po vrsti, top 10 sa punom raspodelom, kapiteni, najvredniji igrači lige i diferencijali |
+| **Čipovi** | Ko je koji čip iskoristio i šta je još ostalo |
 | **Statistika** | Puta poslednji, hitovi, bodovi na klupi, najtesnija spasavanja, konzistentnost |
 | **Podešavanja** | ID lige, iznos duga, obaveštenja, ručno osvežavanje, izvoz u JSON |
 
@@ -24,7 +24,11 @@ Android aplikacija za mini ligu FPLBP (FPL liga 68740). Prati ko duguje 350 RSD 
 
 **Kad je FPL nedostupan** ("The game is being updated"): aplikacija prikazuje sačuvane podatke sa porukom i pokušava ponovo u pozadini. Polovični odgovori nikad ne pregaze dobre podatke.
 
-**Obaveštenja** (najviše 3 po kolu, ništa od 23 do 8 h): posle roka (kapiteni, čipovi, hitovi), jedno tokom kola samo ako je borba za dno napeta, i obračun kola sa do dve zanimljivosti: hit koji je odlučio, nizovi ("Petar plaća treće kolo zaredom", "Prvi dug sezone", "Posle 7 kola bez duga…"), promašeni čipovi (Bench Boost, Wildcard, Free Hit, Triple Captain), kapiten "buntovnik", rekordno loše kolo, kasa i udeo u večeri. Tokom kola: "Sve se odlučuje u ponedeljak…" kad dno zavisi od igrača koji tek igraju. Plus pregled na polusezoni i na kraju sezone.
+**Deljenje:** dugme u gornjem uglu pravi sliku tabele dugovanja ili tekućeg kola za Viber/WhatsApp.
+
+**Osvežavanje:** dok je aplikacija otvorena i igra se utakmica, osvežava se sama na 2 minuta. Teški FPL fajl sa svim igračima preuzima se jednom dnevno ili kad počne novo kolo.
+
+**Obaveštenja** (najviše 3 dnevno, ništa od 23 do 8 h; obračun kola uvek stiže): posle roka (kapiteni, čipovi, hitovi), jedno tokom kola samo ako je borba za dno napeta, i obračun kola sa do dve zanimljivosti: hit koji je odlučio, nizovi ("Petar plaća treće kolo zaredom", "Prvi dug sezone", "Posle 7 kola bez duga…"), promašeni čipovi (Bench Boost, Wildcard, Free Hit, Triple Captain), kapiten "buntovnik", rekordno loše kolo, kasa i udeo u večeri. Tokom kola: posle svakog dana utakmica, "Ostala je još samo LIV–MCI…" kad je dno tesno pred poslednju utakmicu, i preokret na dnu (najviše jednom dnevno). Plus pregled na polusezoni i na kraju sezone.
 
 ## Prvo pokretanje
 

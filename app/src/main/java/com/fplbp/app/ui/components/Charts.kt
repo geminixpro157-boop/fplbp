@@ -409,3 +409,52 @@ fun PositionHeatmap(rows: List<Pair<String, List<Int?>>>, gws: List<Int>, teamCo
         }
     }
 }
+
+data class Slice(val label: String, val value: Int, val color: Color)
+
+/** Donut with a 2dp gap between slices; total in the middle, values and shares in the legend. */
+@Composable
+fun DonutChart(slices: List<Slice>, centerValue: String, centerLabel: String, modifier: Modifier = Modifier) {
+    val visible = slices.filter { it.value > 0 }
+    val total = visible.sumOf { it.value }.coerceAtLeast(1)
+    val surface = MaterialTheme.colorScheme.surfaceContainer
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(132.dp), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.size(132.dp)) {
+                val stroke = 20.dp.toPx()
+                val inset = stroke / 2
+                val arcSize = Size(size.width - stroke, size.height - stroke)
+                var start = -90f
+                val gapDeg = if (visible.size > 1) 2f else 0f
+                visible.forEach { s ->
+                    val sweep = 360f * s.value / total
+                    drawArc(
+                        s.color, start + gapDeg / 2, (sweep - gapDeg).coerceAtLeast(0.5f), useCenter = false,
+                        topLeft = Offset(inset, inset), size = arcSize, style = Stroke(stroke),
+                    )
+                    start += sweep
+                }
+                if (visible.isEmpty()) drawCircle(surface, radius = size.minDimension / 2 - inset, style = Stroke(stroke))
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(centerValue, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(centerLabel, style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
+            }
+        }
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            visible.forEach { s ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(10.dp).clip(RoundedCornerShape(3.dp)).background(s.color))
+                    Spacer(Modifier.width(8.dp))
+                    Text(s.label, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("${s.value}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "${(s.value * 100.0 / total).roundToInt()}%", Modifier.width(40.dp),
+                        style = MaterialTheme.typography.labelSmall, color = App.colors.muted, textAlign = TextAlign.End,
+                    )
+                }
+            }
+        }
+    }
+}
