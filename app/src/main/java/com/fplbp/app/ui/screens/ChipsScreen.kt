@@ -39,54 +39,70 @@ import com.fplbp.app.ui.theme.App
 @Composable
 fun ChipsScreen(data: LeagueData) {
     if (data.chipWindows.isEmpty()) return EmptyState("Podaci o čipovima još nisu učitani.")
-    val windows = data.chipWindows
-    val halves = windows.groupBy { it.name }.mapValues { e -> e.value.sortedBy { it.startEvent } }
+    // One card per chip period (since 2025/26: kola 1–19 and 20–38).
+    val periods = data.chipWindows.groupBy { it.startEvent to it.stopEvent }.toList().sortedBy { it.first.first }
+    val current = data.liveGw?.gw ?: data.gws.lastOrNull()?.gw ?: 0
 
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
-            SectionCard(title = "Čipovi", subtitle = "Broj = kolo u kome je čip iskorišćen") {
-                Row {
-                    // Team names column
-                    Column(Modifier.width(96.dp)) {
-                        Spacer(Modifier.height(36.dp))
-                        data.teams.forEach { t ->
-                            Row(Modifier.height(40.dp), verticalAlignment = Alignment.CenterVertically) {
-                                TeamDot(teamColor(data, t.entryId))
-                                Spacer(Modifier.width(6.dp))
-                                Text(t.name, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                        }
-                    }
-                    Column(Modifier.horizontalScroll(rememberScrollState())) {
-                        Row {
-                            windows.forEach { w ->
-                                val idx = halves[w.name]?.indexOf(w) ?: 0
-                                val multi = (halves[w.name]?.size ?: 1) > 1
-                                Column(Modifier.width(48.dp).height(36.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(Chips.short(w.name), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                                    Text(
-                                        if (multi) "${idx + 1}. pol." else "${w.startEvent}–${w.stopEvent}",
-                                        style = MaterialTheme.typography.labelSmall, color = App.colors.muted,
-                                    )
-                                }
-                            }
-                        }
-                        data.teams.forEach { t ->
-                            Row(Modifier.height(40.dp), verticalAlignment = Alignment.CenterVertically) {
-                                data.chipGrid[t.entryId].orEmpty().forEach { c -> Cell(c) }
-                            }
+        periods.forEachIndexed { i, (range, windows) ->
+            item {
+                val (from, to) = range
+                val title = when {
+                    periods.size == 1 -> "Čipovi"
+                    i == 0 -> "Prvi deo sezone"
+                    i == 1 -> "Drugi deo sezone"
+                    else -> "Period ${i + 1}"
+                }
+                val state = when {
+                    current > to -> " · završeno"
+                    current >= from -> " · u toku"
+                    else -> " · počinje u kolu $from"
+                }
+                SectionCard(title = title, subtitle = "Kola $from–$to$state") {
+                    ChipGrid(data, windows)
+                    if (i == periods.size - 1) {
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                            LegendCell("K5", "iskorišćen", used = true)
+                            LegendCell("✓", "dostupan", used = false)
+                            LegendCell("–", "istekao", used = false, expired = true)
                         }
                     }
                 }
-                Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    LegendCell("K5", "iskorišćen", used = true)
-                    LegendCell("✓", "dostupan", used = false)
-                    LegendCell("–", "istekao", used = false, expired = true)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChipGrid(data: LeagueData, windows: List<com.fplbp.app.data.db.ChipWindowEntity>) {
+    Row {
+        Column(Modifier.weight(1f)) {
+            Spacer(Modifier.height(28.dp))
+            data.teams.forEach { t ->
+                Row(Modifier.height(40.dp), verticalAlignment = Alignment.CenterVertically) {
+                    TeamDot(teamColor(data, t.entryId))
+                    Spacer(Modifier.width(6.dp))
+                    Text(t.name, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+        Column {
+            Row {
+                windows.forEach { w ->
+                    Box(Modifier.width(48.dp).height(28.dp), contentAlignment = Alignment.Center) {
+                        Text(Chips.short(w.name), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+            data.teams.forEach { t ->
+                val cells = data.chipGrid[t.entryId].orEmpty()
+                Row(Modifier.height(40.dp), verticalAlignment = Alignment.CenterVertically) {
+                    windows.forEach { w -> cells.firstOrNull { it.window == w }?.let { Cell(it) } ?: Box(Modifier.width(48.dp)) }
                 }
             }
         }

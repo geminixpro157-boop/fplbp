@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -109,14 +110,16 @@ private fun androidx.compose.foundation.lazy.LazyListScope.teamView(data: League
             val color = teamColor(data, entryId)
             list.take(10).forEachIndexed { i, c ->
                 Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text("${i + 1}.", Modifier.width(24.dp), style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
-                        Text(data.playerName(c.element), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                        Spacer(Modifier.width(6.dp))
-                        ClubChip(data.clubShort(c.element), data.players[c.element]?.elementType)
-                        Spacer(Modifier.weight(1f))
-                        Text("${c.total}", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                            Text(data.playerName(c.element), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                            Spacer(Modifier.width(6.dp))
+                            ClubChip(data.clubShort(c.element), data.players[c.element]?.elementType)
+                        }
+                        Text("${c.total}", Modifier.width(48.dp), style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End)
                     }
                     Spacer(Modifier.height(4.dp))
                     Box(Modifier.padding(start = 24.dp).fillMaxWidth(c.total.toFloat() / maxTotal).height(6.dp)

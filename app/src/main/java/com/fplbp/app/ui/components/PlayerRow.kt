@@ -86,22 +86,27 @@ fun PlayerRow(data: LeagueData, gv: GwView, p: EffectivePick, dim: Boolean = fal
 
     Column(Modifier.fillMaxWidth().clickable { open = !open }.padding(vertical = 5.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(data.playerName(p.element), style = MaterialTheme.typography.bodyMedium, color = textColor,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                    when {
-                        p.captaincyPassed -> Badge("C←V")
-                        p.isCaptain && p.multiplier == 3 -> Badge("TC")
-                        p.isCaptain -> Badge("C")
-                        p.isVice -> Badge("V")
-                    }
-                    if (p.subbedIn) Text(" ↑", color = App.colors.safe, style = MaterialTheme.typography.labelMedium)
-                    if (p.subbedOut) Text(" ↓", color = App.colors.debt, style = MaterialTheme.typography.labelMedium)
+            // Name, armband, sub arrow, club/position and event icons on one line (wraps only if it must).
+            FlowRow(
+                Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                val center = Modifier.align(Alignment.CenterVertically)
+                Text(data.playerName(p.element), center, style = MaterialTheme.typography.bodyMedium, color = textColor,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                val badge = when {
+                    p.captaincyPassed -> "C←V"
+                    p.isCaptain && p.multiplier == 3 -> "TC"
+                    p.isCaptain -> "C"
+                    p.isVice -> "V"
+                    else -> null
                 }
-                Spacer(Modifier.height(3.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    ClubChip(data.clubShort(p.element), player?.elementType)
+                if (badge != null) Box(center) { Pill(badge, App.colors.gold, filled = true) }
+                if (p.subbedIn) Text("↑", center, color = App.colors.safe, style = MaterialTheme.typography.labelMedium)
+                if (p.subbedOut) Text("↓", center, color = App.colors.debt, style = MaterialTheme.typography.labelMedium)
+                Box(center) { ClubChip(data.clubShort(p.element), player?.elementType) }
+                Box(center) {
                     Events(
                         goals = v("goals_scored"), assists = v("assists"), cs = v("clean_sheets") > 0,
                         bonus = bonusPts, bonusPredicted = predictedBonus > 0 && v("bonus") == 0,
@@ -224,9 +229,3 @@ private fun Tag(text: String, color: Color) = Text(text, style = MaterialTheme.t
 
 @Composable
 private fun CardIcon(color: Color) = Box(Modifier.size(9.dp, 12.dp).clip(RoundedCornerShape(2.dp)).background(color))
-
-@Composable
-private fun Badge(text: String) {
-    Spacer(Modifier.width(6.dp))
-    Pill(text, App.colors.gold, filled = true)
-}
