@@ -386,7 +386,7 @@ object BanterEngine {
         val sorted = rows.sortedByDescending { it.total }
         val lines = sorted.map { r ->
             val pct = if (pot > Rational.ZERO) (r.total.toDouble() / pot.toDouble() * 100).toInt() else 0
-            "${r.name}: ${Fmt.rsdShort(r.total)} ($pct%, ${r.timesLast}× zadnji)"
+            "${r.name}: ${Fmt.rsdShort(r.total)} ($pct%, ${r.timesLast}× poslednji)"
         }
         val head = if (isEnd) "Kraj sezone! Kasa: ${Fmt.rsdShort(pot)}." else "Polusezona (kolo $gw). Kasa: ${Fmt.rsdShort(pot)}."
         val tail = sorted.firstOrNull()?.takeIf { it.total > Rational.ZERO }?.let {

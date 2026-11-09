@@ -138,7 +138,7 @@ private fun Header(data: LeagueData, v: GwView) {
 
 @Composable
 private fun WeekTransfers(data: LeagueData, v: GwView, weeks: List<com.fplbp.app.domain.TransferAnalysis.Week>) {
-    SectionCard(title = "Transferi ovog kola", subtitle = "Bodovi u ovom kolu: ↑ novi igrač naspram ↓ prodatog (bez kapitena)") {
+    SectionCard(title = "Transferi ovog kola", subtitle = "↑ novi naspram ↓ prodatog, bodovi ovog kola") {
         val order = v.scores.sortedByDescending { it.net }.map { it.entryId }
         val sorted = weeks.sortedBy { order.indexOf(it.entryId) }
         sorted.forEachIndexed { i, w ->
@@ -167,7 +167,7 @@ private fun WeekTransfers(data: LeagueData, v: GwView, weeks: List<com.fplbp.app
 @Composable
 private fun Differentials(data: LeagueData, v: GwView) {
     val diffs = remember(v) { Decider.leagueDifferentials(v.lineups) }
-    SectionCard(title = "Diferencijali", subtitle = "Igrači koje u ovom kolu niko drugi u ligi nije imao. Tapni igrača za bodove.") {
+    SectionCard(title = "Diferencijali", subtitle = "Niko drugi ih nije imao · tapni za bodove") {
         val order = v.scores.sortedByDescending { it.net }
         order.forEachIndexed { i, s ->
             val list = diffs[s.entryId].orEmpty()

@@ -104,7 +104,7 @@ object ShareImage {
         val lastFinal = data.gws.lastOrNull { it.isFinal }?.gw
         val top = header(
             c, data, "Tabela dugovanja",
-            (if (lastFinal != null) "Posle kola $lastFinal · " else "") + "Kasa: ${Fmt.rsd(data.pot)}",
+            (if (lastFinal != null) "Posle kola $lastFinal · " else "") + "Kasa: ${Fmt.rsdShort(data.pot)}",
         )
         var y = card(c, top, rows.size)
         val max = rows.maxOfOrNull { it.total } ?: Rational.ZERO
@@ -120,12 +120,12 @@ object ShareImage {
             val base = y + ROW / 2
             c.drawText("${i + 1}", PAD, base + 14f, paint(40f, MUTED, bold = true))
             c.drawText(ellipsize(team?.name ?: "?", name, 520f), PAD + 64f, base, name)
-            c.drawText(ellipsize("${team?.manager ?: ""} · ${r.timesLast}× zadnji", small, 520f), PAD + 64f, base + 40f, small)
-            c.drawText(Fmt.rsd(r.total), W - PAD, base + 16f, paint(46f, color, bold = true, align = Paint.Align.RIGHT))
+            c.drawText(ellipsize("${team?.manager ?: ""} · ${r.timesLast}× poslednji", small, 520f), PAD + 64f, base + 40f, small)
+            c.drawText(Fmt.rsdShort(r.total), W - PAD, base + 16f, paint(46f, color, bold = true, align = Paint.Align.RIGHT))
             if (i < rows.lastIndex) c.drawLine(PAD, y + ROW, W - PAD, y + ROW, Paint().apply { this.color = GRID; strokeWidth = 2f })
             y += ROW
         }
-        footer(c, y + 100f, "${data.finalCount} kola × ${Fmt.rsd(data.debt)} · ${today()}")
+        footer(c, y + 100f, "${data.finalCount} kola × ${Fmt.rsdShort(data.debt)} · ${today()}")
         return bmp
     }
 
@@ -147,9 +147,9 @@ object ShareImage {
             val base = y + ROW / 2
             c.drawText("${o?.ranks?.get(s.entryId) ?: i + 1}", PAD, base + 14f, paint(40f, MUTED, bold = true))
             c.drawText(ellipsize(data.teamName(s.entryId), name.apply { color = if (loser) DEBT else TEXT }, 560f), PAD + 64f, base, name)
+            // Only what the big number doesn't already say: hits and chips.
             val detail = buildList {
-                add("${s.points} b.")
-                if (s.transferCost > 0) add("−${s.transferCost}")
+                if (s.transferCost > 0) add("${s.points} b. − ${s.transferCost} hit")
                 s.chip?.let { add(com.fplbp.app.domain.Chips.label(it)) }
             }.joinToString(" · ")
             c.drawText(ellipsize(detail, small, 560f), PAD + 64f, base + 40f, small)

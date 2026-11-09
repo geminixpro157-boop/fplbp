@@ -114,15 +114,15 @@ fun debtColor(total: Rational, max: Rational): Color = when {
 private fun PotCard(data: LeagueData) {
     SectionCard {
         Text("Ukupno u kasi", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
-        Text(Fmt.rsd(data.pot), style = MaterialTheme.typography.headlineMedium, color = App.colors.gold)
+        Text(Fmt.rsdShort(data.pot), style = MaterialTheme.typography.headlineMedium, color = App.colors.gold)
         Text(
-            "${data.finalCount} završenih kola × ${Fmt.rsd(data.debt)}",
+            "${data.finalCount} završenih kola × ${Fmt.rsdShort(data.debt)}",
             style = MaterialTheme.typography.bodySmall, color = App.colors.muted,
         )
         data.liveGw?.takeIf { it.outcome != null }?.let { live ->
             Text(
                 "+${Fmt.rsdShort(Rational.of(data.debt))} u toku (Kolo ${live.gw}) → " +
-                    Fmt.rsd(data.pot + data.debt),
+                    Fmt.rsdShort(data.pot + data.debt),
                 style = MaterialTheme.typography.bodySmall, color = App.colors.provisional,
             )
         }
@@ -187,20 +187,6 @@ private fun LiveCard(data: LeagueData, v: GwView) {
                 contentDescription = if (open) "Sakrij detalje" else "Prikaži detalje", tint = App.colors.muted,
             )
         }
-        Spacer(Modifier.height(10.dp))
-        val names = o.losers.map { data.teamName(it) }
-        Text(
-            if (o.losers.size == 1) "Trenutno plaća: ${names[0]}" else "Trenutno dele dug: ${joinSr(names)}",
-            style = MaterialTheme.typography.titleMedium, color = App.colors.debt,
-        )
-        Text(
-            buildString {
-                append("${poena(o.lowestNet)} neto")
-                o.gapToSafety?.let { append(" · ${poena(it)} do spasa") }
-                if (o.losers.size > 1) append(" · po ${Fmt.rsdShort(o.share)}")
-            },
-            style = MaterialTheme.typography.bodySmall, color = App.colors.muted,
-        )
         Spacer(Modifier.height(10.dp))
         val sorted = v.scores.sortedByDescending { it.net }
         sorted.forEachIndexed { i, s ->
@@ -276,8 +262,8 @@ private fun DebtTable(data: LeagueData, onTeam: (Long) -> Unit) {
         Row(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
             Text("#", Modifier.width(24.dp), style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
             Text("Tim", Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
-            Text("Puta zadnji", Modifier.width(72.dp), style = MaterialTheme.typography.labelSmall, color = App.colors.muted, textAlign = TextAlign.End)
-            Text("Dug", Modifier.width(112.dp), style = MaterialTheme.typography.labelSmall, color = App.colors.muted, textAlign = TextAlign.End)
+            Text("Puta poslednji", Modifier.width(86.dp), style = MaterialTheme.typography.labelSmall, color = App.colors.muted, textAlign = TextAlign.End)
+            Text("Dug", Modifier.width(96.dp), style = MaterialTheme.typography.labelSmall, color = App.colors.muted, textAlign = TextAlign.End)
         }
         HorizontalDivider(color = App.colors.grid)
         data.debtTable.forEachIndexed { i, row ->
@@ -297,14 +283,14 @@ private fun DebtTable(data: LeagueData, onTeam: (Long) -> Unit) {
                     Text(team?.manager ?: "", style = MaterialTheme.typography.labelSmall, color = App.colors.muted, maxLines = 1)
                 }
                 val paysNow = pending != null && pendingShare != null && row.entryId in pending.losers
-                Column(Modifier.width(72.dp), horizontalAlignment = Alignment.End) {
+                Column(Modifier.width(86.dp), horizontalAlignment = Alignment.End) {
                     Text("${row.timesLast}", style = MaterialTheme.typography.bodyMedium)
                     if (row.timesLastShared > 0) Text("${row.timesLastShared} deljeno", style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
                     if (paysNow) Text("+1", style = MaterialTheme.typography.labelSmall, color = App.colors.provisional)
                 }
-                Column(Modifier.width(112.dp), horizontalAlignment = Alignment.End) {
+                Column(Modifier.width(96.dp), horizontalAlignment = Alignment.End) {
                     Text(
-                        Fmt.rsd(row.total),
+                        Fmt.rsdShort(row.total),
                         style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End,
                         color = debtColor(row.total, max),
                     )
@@ -312,7 +298,7 @@ private fun DebtTable(data: LeagueData, onTeam: (Long) -> Unit) {
                         val share = pendingShare!!
                         Text("+${Fmt.rsdShort(share)} u toku", style = MaterialTheme.typography.labelSmall,
                             color = App.colors.provisional, textAlign = TextAlign.End)
-                        Text("→ ${Fmt.rsd(row.total + share)}", style = MaterialTheme.typography.labelSmall,
+                        Text("→ ${Fmt.rsdShort(row.total + share)}", style = MaterialTheme.typography.labelSmall,
                             color = App.colors.provisional, textAlign = TextAlign.End)
                     }
                 }
@@ -329,7 +315,7 @@ private fun DebtTable(data: LeagueData, onTeam: (Long) -> Unit) {
 @Composable
 private fun DebtRace(data: LeagueData) {
     val teams = data.debtTable.map { it.entryId }
-    SectionCard(title = "Dugovanje kroz sezonu", subtitle = "Ukupan dug posle svakog kola · tapni ili prevuci") {
+    SectionCard(title = "Dugovanje kroz sezonu", subtitle = "Dug posle svakog kola · tapni za detalje") {
         LineChart(
             xLabels = data.raceGws.map { "$it" },
             series = teams.map { ChartSeries(data.teamName(it), teamColor(data, it), data.raceSeries[it].orEmpty()) },

@@ -57,7 +57,7 @@ fun CaptainsCard(data: LeagueData) {
     val popular = Insights.popularCaptains(finalInsightGws(data)).take(8)
     if (popular.isEmpty()) return
     val teams = data.teams.map { it.entryId }.sorted()
-    SectionCard(title = "Najčešći kapiteni u sezoni", subtitle = "Završena kola · broj uz boju = koliko puta je izabran za kapitena · prosek bez množenja") {
+    SectionCard(title = "Najčešći kapiteni u sezoni", subtitle = "Broj uz boju = koliko puta je izabran") {
         popular.forEachIndexed { i, p ->
             Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -109,7 +109,7 @@ fun OwnershipCard(data: LeagueData, v: GwView) {
     val teams = data.teams.map { it.entryId }.sorted()
     SectionCard(
         title = "Zajednički igrači",
-        subtitle = "Igrači koje ima bar dva tima · C kapiten, V vice, ● igra, ○ klupa · broj desno = bodovi u ovom kolu",
+        subtitle = "C kapiten · V vice · ○ klupa · desno bodovi",
     ) {
         if (rows.isEmpty()) Text("Nijedan igrač nije zajednički.", style = MaterialTheme.typography.bodySmall, color = App.colors.muted)
         rows.forEach { o ->
@@ -151,7 +151,7 @@ private fun Badge(text: String, color: Color) {
 fun OwnPlayersCard(data: LeagueData) {
     val shares = Insights.ownShare(finalInsightGws(data))
     if (shares.isEmpty()) return
-    SectionCard(title = "Bodovi od diferencijala", subtitle = "Deo bodova od igrača koje u tom kolu niko drugi u ligi nije imao") {
+    SectionCard(title = "Bodovi od diferencijala", subtitle = "Od igrača koje niko drugi nije imao") {
         shares.values.sortedByDescending { it.share }.forEachIndexed { i, s ->
             Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -233,7 +233,7 @@ fun PositionsCard(data: LeagueData) {
     val byPos = Insights.pointsBy(finalInsightGws(data)) { data.players[it]?.elementType }
     if (byPos.isEmpty()) return
     val order = listOf(Pos.GK, Pos.DEF, Pos.MID, Pos.FWD)
-    SectionCard(title = "Bodovi po poziciji", subtitle = "Udeo bodova po poziciji · najveći u koloni podebljan · završena kola, sa kapitenom") {
+    SectionCard(title = "Bodovi po poziciji", subtitle = "Najveći udeo u koloni je podebljan") {
         ShareTable(
             data = data,
             columns = order.map { Pos.short(it) },
@@ -250,7 +250,7 @@ fun ClubsCard(data: LeagueData) {
     // Same columns for every team: the clubs with the most points across the league (as many as fit), then the rest.
     val ranked = byClub.values.flatMap { it.entries }.groupBy({ it.key }, { it.value })
         .mapValues { it.value.sum() }.entries.sortedByDescending { it.value }.map { it.key }
-    SectionCard(title = "Bodovi po klubu", subtitle = "Klubovi sa najviše bodova u ligi, ostalo zajedno · najveći u koloni podebljan") {
+    SectionCard(title = "Bodovi po klubu", subtitle = "Najveći udeo u koloni je podebljan") {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             // Each column needs ~42dp for "25%"; one column is "Ost.", 22dp go to the team dot.
             val fit = (((maxWidth - 22.dp) / 42.dp).toInt() - 1).coerceIn(3, 10)

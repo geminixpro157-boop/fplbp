@@ -82,7 +82,7 @@ fun SettingsScreen(vm: MainViewModel) {
             }
         }
         item {
-            SectionCard(title = "Obaveštenja", subtitle = "Najviše 3 dnevno, ništa između 23 i 8 h (obračun kola uvek stiže)") {
+            SectionCard(title = "Obaveštenja", subtitle = "Najviše 3 dnevno · tiho od 23 do 8 h") {
                 Toggle("Kolo završeno", "Ko duguje i zanimljivost kola", nSettle) { nSettle = it; prefs.notifSettle = it }
                 Toggle("Posle roka", "Kapiteni, čipovi i hitovi", nDeadline) { nDeadline = it; prefs.notifDeadline = it }
                 Toggle("Tokom kola", "Samo ako je borba za dno napeta", nMatchday) { nMatchday = it; prefs.notifMatchday = it }

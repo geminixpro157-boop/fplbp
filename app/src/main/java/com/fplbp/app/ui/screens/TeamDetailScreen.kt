@@ -53,7 +53,7 @@ fun TeamDetailScreen(data: LeagueData, entryId: Long, onGw: (Int) -> Unit) {
                     val max = data.debtTable.maxOfOrNull { it.total } ?: Rational.ZERO
                     StatTile("Dug", debt?.let { Fmt.rsdShort(it.total) } ?: "0 RSD", Modifier.weight(1f),
                         valueColor = debtColor(debt?.total ?: Rational.ZERO, max))
-                    StatTile("Puta zadnji", "${debt?.timesLast ?: 0}", Modifier.weight(1f))
+                    StatTile("Puta poslednji", "${debt?.timesLast ?: 0}", Modifier.weight(1f))
                     StatTile("Prosek", st?.let { Fmt.decimal(it.avgNet, 1) } ?: "–", Modifier.weight(1f))
                 }
             }

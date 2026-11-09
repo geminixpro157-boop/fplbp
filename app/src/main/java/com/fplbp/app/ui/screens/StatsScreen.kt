@@ -53,7 +53,6 @@ fun StatsScreen(data: LeagueData, onTeam: (Long) -> Unit) {
     ) {
         item { TotalPoints(data, onTeam) }
         item { Highlights(data, stats) }
-        item { BarCard(data, "Puta poslednji", "Uključena deljena dna", stats) { it.timesLast } }
         item { BarCard(data, "Minusi za transfere", "Ukupno bodova izgubljeno na hitove", stats, suffix = { s -> " (${s.hitsCount}×)" }) { it.hitsPoints } }
         item { BarCard(data, "Bodovi ostavljeni na klupi", "Bez kola sa Bench Boost-om", stats) { it.benchPoints } }
         if (data.gws.size >= 2) item { HeatmapCard(data) }
@@ -189,7 +188,7 @@ private fun BarCard(
 private fun HeatmapCard(data: LeagueData) {
     val gws = data.gws
     val teams = data.debtTable.map { it.entryId }
-    SectionCard(title = "Plasman po kolu", subtitle = "${teams.size} = poslednji (plaća). Jača boja = gore.") {
+    SectionCard(title = "Plasman po kolu", subtitle = "${teams.size} = poslednji · jača boja = lošije") {
         PositionHeatmap(
             rows = teams.map { id -> data.teamName(id) to gws.map { g -> g.outcome?.ranks?.get(id) } },
             gws = gws.map { it.gw },

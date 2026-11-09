@@ -103,7 +103,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.teamView(data: League
         }
     }
     if (minus.isNotEmpty()) item {
-        SectionCard(title = "Minusi", subtitle = "Bodovi izgubljeni, po vrsti (ukupno ${minus.sumOf { it.second }})") {
+        SectionCard(title = "Minusi", subtitle = "Izgubljeni bodovi (ukupno ${minus.sumOf { it.second }})") {
             HBarChart(minus.map { (cat, v) ->
                 BarItem(Category.label(cat), -v.toDouble(), App.colors.debt, "$v")
             }, labelWidth = 120.dp)

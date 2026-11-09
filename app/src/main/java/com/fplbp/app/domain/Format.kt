@@ -17,6 +17,8 @@ object Fmt {
         else money(bd) + " RSD"
     }
 
+    fun rsdShort(amount: Long): String = rsdShort(Rational.of(amount))
+
     fun money(bd: BigDecimal): String {
         val s = bd.setScale(2, RoundingMode.HALF_UP).toPlainString()
         val neg = s.startsWith("-")
