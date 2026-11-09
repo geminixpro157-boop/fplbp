@@ -58,7 +58,7 @@ fun CaptainsCard(data: LeagueData) {
     val popular = Insights.popularCaptains(finalInsightGws(data)).take(8)
     if (popular.isEmpty()) return
     val teams = data.teams.map { it.entryId }.sorted()
-    SectionCard(title = "Najčešći kapiteni u sezoni", subtitle = "Broj uz boju = koliko puta je izabran") {
+    SectionCard(title = "Najčešći kapiteni u sezoni", subtitle = "×broj = koliko puta ga je tim izabrao") {
         popular.forEachIndexed { i, p ->
             Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -69,20 +69,20 @@ fun CaptainsCard(data: LeagueData) {
                     Text("×${p.times} · prosek ${Fmt.decimal(p.avgRaw, 1)}", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
                 }
                 Spacer(Modifier.height(4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Full team names, so no legend is needed.
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     teams.filter { (p.byTeam[it] ?: 0) > 0 }.sortedByDescending { p.byTeam[it] }.forEach { id ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             TeamDot(teamColor(data, id))
-                            Spacer(Modifier.width(4.dp))
-                            Text("${p.byTeam[id]}", style = MaterialTheme.typography.labelMedium)
+                            Spacer(Modifier.width(5.dp))
+                            Text("${data.teamName(id)} ×${p.byTeam[id]}", style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
             }
             if (i < popular.lastIndex) HorizontalDivider(color = App.colors.grid)
         }
-        HorizontalDivider(Modifier.padding(top = 4.dp, bottom = 8.dp), color = App.colors.grid)
-        TeamLegend(data, teams)
     }
 }
 
@@ -272,23 +272,16 @@ fun PositionsCard(data: LeagueData) {
 fun ClubsCard(data: LeagueData) {
     val byClub = Insights.pointsBy(finalInsightGws(data)) { data.players[it]?.clubId }
     if (byClub.isEmpty()) return
-    // Same columns for every team: the clubs with the most points across the league (as many as fit), then the rest.
-    val ranked = byClub.values.flatMap { it.entries }.groupBy({ it.key }, { it.value })
-        .mapValues { it.value.sum() }.entries.sortedByDescending { it.value }.map { it.key }
+    // Same columns for every team: the league's top 3 clubs by points, then the rest.
+    val top = byClub.values.flatMap { it.entries }.groupBy({ it.key }, { it.value })
+        .mapValues { it.value.sum() }.entries.sortedByDescending { it.value }.take(3).map { it.key }
     SectionCard(title = "Bodovi po klubu", subtitle = "Najveći udeo u koloni je podebljan") {
-        BoxWithConstraints(Modifier.fillMaxWidth()) {
-            // Each column needs ~42dp for "25%"; one column is "Ost.", 22dp go to the team dot.
-            val fit = (((maxWidth - 22.dp) / 42.dp).toInt() - 1).coerceIn(3, 10)
-            val top = ranked.take(fit)
-            Column {
-                ShareTable(
-                    data = data,
-                    columns = top.map { data.clubs[it]?.shortName ?: "?" } + "Ost.",
-                    values = byClub.mapValues { (_, m) -> top.map { m[it] ?: 0 } + (m.values.sum() - top.sumOf { m[it] ?: 0 }) },
-                    fullNames = false,
-                )
-            }
-        }
+        ShareTable(
+            data = data,
+            columns = top.map { data.clubs[it]?.shortName ?: "?" } + "Ost.",
+            values = byClub.mapValues { (_, m) -> top.map { m[it] ?: 0 } + (m.values.sum() - top.sumOf { m[it] ?: 0 }) },
+            fullNames = true,
+        )
     }
 }
 
