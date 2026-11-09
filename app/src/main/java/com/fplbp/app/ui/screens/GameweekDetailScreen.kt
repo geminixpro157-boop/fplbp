@@ -156,7 +156,7 @@ private fun WeekTransfers(data: LeagueData, v: GwView, weeks: List<com.fplbp.app
             }
             w.results.sortedByDescending { it.weekDiff }.forEachIndexed { j, r ->
                 if (j > 0) Spacer(Modifier.height(6.dp))
-                TransferCard(data, r, held = false, showGw = false)
+                TransferCard(data, r, held = false, showGw = false, showDiff = w.results.size > 1)
             }
             if (w.hit > 0) Text("Hit −${w.hit}", style = MaterialTheme.typography.labelMedium, color = App.colors.debt)
             if (i < sorted.lastIndex) HorizontalDivider(Modifier.padding(top = 6.dp), color = App.colors.grid)
@@ -167,22 +167,32 @@ private fun WeekTransfers(data: LeagueData, v: GwView, weeks: List<com.fplbp.app
 @Composable
 private fun Differentials(data: LeagueData, v: GwView) {
     val diffs = remember(v) { Decider.leagueDifferentials(v.lineups) }
-    SectionCard(title = "Diferencijali", subtitle = "Niko drugi ih nije imao · tapni za bodove") {
+    SectionCard(title = "Diferencijali", subtitle = "Niko drugi ih nije imao · tapni tim") {
         val order = v.scores.sortedByDescending { it.net }
         order.forEachIndexed { i, s ->
             val list = diffs[s.entryId].orEmpty()
-            Row(Modifier.fillMaxWidth().padding(top = if (i == 0) 0.dp else 10.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            var open by remember(v.gw, s.entryId) { mutableStateOf(false) }
+            Row(
+                Modifier.fillMaxWidth().clickable(enabled = list.isNotEmpty()) { open = !open }.padding(vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 TeamDot(teamColor(data, s.entryId))
                 Spacer(Modifier.width(8.dp))
-                Text(data.teamName(s.entryId), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall,
+                Text(data.teamName(s.entryId), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
-                    if (list.isEmpty()) "ništa posebno" else "ukupno ${list.sumOf { it.total }}",
+                    if (list.isEmpty()) "nijedan" else "${list.size} · ukupno ${list.sumOf { it.total }}",
                     style = MaterialTheme.typography.labelMedium, color = App.colors.muted,
                 )
+                if (list.isNotEmpty()) Icon(
+                    if (open) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (open) "Sakrij" else "Prikaži", tint = App.colors.muted,
+                )
             }
-            list.forEach { PlayerRow(data, v, it) }
-            if (i < order.lastIndex) HorizontalDivider(Modifier.padding(top = 6.dp), color = App.colors.grid)
+            if (list.isNotEmpty()) AnimatedVisibility(open) {
+                Column(Modifier.padding(bottom = 8.dp)) { list.forEach { PlayerRow(data, v, it) } }
+            }
+            if (i < order.lastIndex) HorizontalDivider(color = App.colors.grid)
         }
     }
 }

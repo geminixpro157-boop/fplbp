@@ -226,12 +226,12 @@ private fun GwGroup(data: LeagueData, entryId: Long, gw: Int, rs: List<TransferA
             if (rs.any { it.wildcard }) { Spacer(Modifier.width(8.dp)); Pill("Wildcard", App.colors.gold) }
             Spacer(Modifier.weight(1f))
             if (rs.size > 1) Text("${transfera(rs.size)} · ukupno ", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
-            if (rs.size > 1) Text(signed(total), style = MaterialTheme.typography.labelLarge, color = signColor(total), fontWeight = FontWeight.Bold)
+            Text(signed(total), style = MaterialTheme.typography.titleMedium, color = signColor(total), fontWeight = FontWeight.Bold)
         }
         if (hit > 0) Text("hit −$hit", style = MaterialTheme.typography.labelMedium, color = App.colors.debt)
         Spacer(Modifier.height(6.dp))
         rs.sortedByDescending { it.heldDiff }.forEachIndexed { i, r ->
-            TransferCard(data, r, held = true, showGw = false)
+            TransferCard(data, r, held = true, showGw = false, showDiff = rs.size > 1)
             if (i < rs.lastIndex) HorizontalDivider(Modifier.padding(vertical = 6.dp), color = App.colors.grid)
         }
     }
@@ -242,24 +242,20 @@ private fun GwGroup(data: LeagueData, entryId: Long, gw: Int, rs: List<TransferA
  * [held] = points while the new player was kept; otherwise only the transfer's own gameweek.
  */
 @Composable
-fun TransferCard(data: LeagueData, r: TransferAnalysis.Result, held: Boolean, showGw: Boolean) {
+fun TransferCard(data: LeagueData, r: TransferAnalysis.Result, held: Boolean, showGw: Boolean, showDiff: Boolean = true) {
     val inPts = if (held) r.heldIn else r.weekIn
     val outPts = if (held) r.heldOut else r.weekOut
     val diff = inPts - outPts
     val lastGw = data.gws.lastOrNull()?.gw ?: r.gw
     Column(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // The +/− line is skipped when the header above already shows the same number.
+        if (showGw || showDiff) Row(verticalAlignment = Alignment.CenterVertically) {
             if (showGw) {
                 Text("Kolo ${r.gw}", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
                 if (r.wildcard) { Spacer(Modifier.width(6.dp)); Pill("WC", App.colors.gold) }
             }
             Spacer(Modifier.weight(1f))
             Text(signed(diff), style = MaterialTheme.typography.titleMedium, color = signColor(diff), fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(6.dp))
-            Text(
-                when { diff > 0 -> "isplatilo se"; diff < 0 -> "nije se isplatilo"; else -> "nerešeno" },
-                style = MaterialTheme.typography.labelSmall, color = App.colors.muted,
-            )
         }
         val max = maxOf(inPts, outPts, 1)
         PlayerLine(data, "↑", "Ušao", r.elementIn, inPts, max, App.colors.safe)
