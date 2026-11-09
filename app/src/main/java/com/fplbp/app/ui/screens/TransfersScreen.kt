@@ -278,7 +278,7 @@ fun TransferCard(data: LeagueData, r: TransferAnalysis.Result, held: Boolean, sh
                     else -> add("${kola(kept.size)} u timu (K${kept.first()}–K${kept.last()})")
                 }
                 status?.let { add(it) }
-                if (kept.size > 1) add("samo kolo ${r.gw}: ${r.weekIn} : ${r.weekOut}")
+                if (kept.size > 1) add("u kolu ${r.gw}, ${data.playerName(r.elementIn)} ${r.weekIn} a ${data.playerName(r.elementOut)} ${r.weekOut}")
             }.joinToString(" · ")
         } else {
             "bodovi u ovom kolu"
