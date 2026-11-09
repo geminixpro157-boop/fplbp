@@ -216,8 +216,10 @@ class Repository(
             if (expected.isEmpty() || !have.containsAll(expected)) continue
             // Safety: FPL's per-team history can still be a stale cache right after confirmation.
             // Settle only when it matches our live calculation, or after waiting 6 hours.
-            val view = load()?.gws?.firstOrNull { it.gw == gw.id }
-            val matches = view != null && view.verified.size >= expected.size && view.verified.values.all { it }
+            // Only for the latest gameweek: older ones (e.g. on a fresh install) are long final.
+            val isLatest = gws.none { it.id > gw.id && it.deadline <= now }
+            val view = if (isLatest) load()?.gws?.firstOrNull { it.gw == gw.id } else null
+            val matches = !isLatest || (view != null && view.verified.size >= expected.size && view.verified.values.all { it })
             if (!matches) {
                 val waitKey = "${gw.id}:"
                 if (!prefs.settleWait.startsWith(waitKey)) { prefs.settleWait = waitKey + now; continue }

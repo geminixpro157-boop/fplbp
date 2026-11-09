@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.fplbp.app.BuildConfig
@@ -70,28 +71,18 @@ fun SettingsScreen(vm: MainViewModel) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
+            // Read-only: every phone must use the same league and amount, or the tables would differ.
             SectionCard(title = "Liga") {
-                OutlinedTextField(
-                    value = league, onValueChange = { league = it.filter(Char::isDigit) },
-                    label = { Text("ID lige") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    supportingText = { Text("Promena lige briše sačuvane podatke i učitava novu.") },
+                InfoRow("Liga", "${data?.leagueName ?: prefs.leagueName} (${prefs.leagueId})")
+                InfoRow("Dug po kolu", "${prefs.debtAmount} RSD")
+                Text(
+                    "Isto za sve u ligi. Menja se samo u novoj verziji aplikacije.",
+                    style = MaterialTheme.typography.labelSmall, color = App.colors.muted, modifier = Modifier.padding(top = 4.dp),
                 )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = debt, onValueChange = { debt = it.filter(Char::isDigit) },
-                    label = { Text("Dug po kolu (RSD)") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                )
-                Spacer(Modifier.height(8.dp))
-                Button(onClick = {
-                    league.toLongOrNull()?.let { vm.changeLeague(it) }
-                    debt.toLongOrNull()?.takeIf { it > 0 }?.let { vm.changeDebt(it) }
-                }) { Text("Sačuvaj") }
             }
         }
         item {
-            SectionCard(title = "Obaveštenja", subtitle = "Najviše 3 po kolu, ništa između 23 i 8 h") {
+            SectionCard(title = "Obaveštenja", subtitle = "Najviše 3 dnevno, ništa između 23 i 8 h (obračun kola uvek stiže)") {
                 Toggle("Kolo završeno", "Ko duguje i zanimljivost kola", nSettle) { nSettle = it; prefs.notifSettle = it }
                 Toggle("Posle roka", "Kapiteni, čipovi i hitovi", nDeadline) { nDeadline = it; prefs.notifDeadline = it }
                 Toggle("Tokom kola", "Samo ako je borba za dno napeta", nMatchday) { nMatchday = it; prefs.notifMatchday = it }
@@ -145,6 +136,14 @@ fun SettingsScreen(vm: MainViewModel) {
         confirmButton = { TextButton(onClick = { confirmReset = false; vm.resetData() }) { Text("Obriši") } },
         dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Otkaži") } },
     )
+}
+
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = App.colors.muted)
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+    }
 }
 
 @Composable
