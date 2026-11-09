@@ -76,17 +76,8 @@ fun DebtScreen(data: LeagueData, onTeam: (Long) -> Unit, onGw: (Int) -> Unit) {
 @Composable
 private fun LastResultCard(data: LeagueData, v: GwView, onGw: (Int) -> Unit) {
     val o = v.outcome ?: return
-    val names = o.losers.map { data.teamName(it) }
+    // No "X je platio" headline: the red row and the debt table below already say it.
     SectionCard(Modifier.clickable { onGw(v.gw) }, title = "Kolo ${v.gw} · završeno", subtitle = "Tapni za detalje kola") {
-        Text(
-            if (o.losers.size == 1) "${names[0]} je platio ${Fmt.rsdShort(o.share)}"
-            else "${joinSr(names)} dele po ${Fmt.rsdShort(o.share)}",
-            style = MaterialTheme.typography.titleMedium, color = App.colors.debt,
-        )
-        o.gapToSafety?.let {
-            Text("${poena(it)} do spasa", style = MaterialTheme.typography.bodySmall, color = App.colors.muted)
-        }
-        Spacer(Modifier.height(8.dp))
         v.scores.sortedByDescending { it.net }.forEach { s ->
             val loser = s.entryId in o.losers
             Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
