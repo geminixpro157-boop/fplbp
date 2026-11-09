@@ -49,6 +49,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun dismissBanner() = repo.dismissBanner()
+
     fun checkUpdate() = viewModelScope.launch { update.value = app.updates.check(force = true) }
 
     fun changeLeague(id: Long) = viewModelScope.launch {

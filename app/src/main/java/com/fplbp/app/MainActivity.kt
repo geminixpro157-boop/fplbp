@@ -1,6 +1,8 @@
 package com.fplbp.app
 
 import android.Manifest
+import android.net.ConnectivityManager
+import android.net.Network
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -21,6 +23,23 @@ class MainActivity : ComponentActivity() {
 
     private val askNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
     private val vm: MainViewModel by viewModels()
+
+    /** When the connection comes back after a failed refresh, try again right away. */
+    private val network = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(net: Network) {
+            if (vm.sync.value.error != null) vm.refresh()
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        runCatching { getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(network) }
+    }
+
+    override fun onStop() {
+        runCatching { getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(network) }
+        super.onStop()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

@@ -57,6 +57,9 @@ class Repository(
     private val _data = MutableStateFlow<LeagueData?>(null)
     val data: StateFlow<LeagueData?> = _data.asStateFlow()
 
+    /** Hides the error / "FPL se ažurira" banner (swiped away); a new failure shows it again. */
+    fun dismissBanner() = _sync.update { it.copy(error = null, updating = false) }
+
     suspend fun reload() = withContext(Dispatchers.Default) { _data.value = load() }
 
     // ------------------------------------------------------------------ SYNC
@@ -75,10 +78,16 @@ class Repository(
                 _sync.update { it.copy(updating = true) }
                 SyncResult.Updating
             } catch (e: ApiException) {
-                _sync.update { it.copy(error = e.message) }
-                SyncResult.Failed(e.message ?: "Greška")
+                val msg = when (e) {
+                    is ApiException.Network -> "Nema internet veze"
+                    is ApiException.Http -> "FPL server ne odgovara (greška ${e.code})"
+                    is ApiException.NotFound -> "Liga nije pronađena na FPL-u"
+                    else -> "FPL trenutno nije dostupan"
+                }
+                _sync.update { it.copy(error = msg) }
+                SyncResult.Failed(msg)
             } catch (e: Exception) {
-                _sync.update { it.copy(error = "Greška: ${e.message}") }
+                _sync.update { it.copy(error = "Neočekivana greška") }
                 SyncResult.Failed(e.message ?: "Greška")
             }
             _data.value = load()

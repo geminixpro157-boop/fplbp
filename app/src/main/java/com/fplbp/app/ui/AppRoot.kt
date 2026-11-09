@@ -33,6 +33,9 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -177,12 +180,21 @@ fun AppRoot(vm: MainViewModel = viewModel()) {
                 LinearProgressIndicator(progress = { sync.progress }, modifier = Modifier.fillMaxWidth().height(2.dp))
             }
             if (sync.updating && data != null) {
-                Banner(
-                    color = App.colors.provisional,
-                    text = "FPL se ažurira. Prikazani su sačuvani podaci od ${time(data!!.lastSync)}. Pokušavam ponovo automatski.",
-                )
+                DismissibleBanner("updating", onDismiss = vm::dismissBanner) {
+                    Banner(
+                        color = App.colors.provisional,
+                        text = "FPL se ažurira. Prikazani su sačuvani podaci od ${time(data!!.lastSync)}. Pokušavam ponovo automatski.",
+                    )
+                }
             } else if (sync.error != null && !sync.running && data != null) {
-                Banner(color = App.colors.debt, text = "Nije uspelo osvežavanje (${sync.error}). Prikazani su sačuvani podaci.")
+                DismissibleBanner(sync.error!!, onDismiss = vm::dismissBanner) {
+                    Banner(
+                        color = App.colors.debt,
+                        text = "${sync.error}. Prikazani su podaci od ${time(data!!.lastSync)}. " +
+                            (if (sync.error == "Nema internet veze") "Osvežiće se čim se veza vrati." else "Povuci nadole za novi pokušaj.") +
+                            " Prevuci levo ili desno da sakriješ.",
+                    )
+                }
             }
             update?.let { u ->
                 if (isTab) Banner(
@@ -215,6 +227,21 @@ fun AppRoot(vm: MainViewModel = viewModel()) {
                 }
             }
         }
+    }
+}
+
+/** Swipe left or right to hide. [key] resets the swipe state for a new message. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DismissibleBanner(key: String, onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    androidx.compose.runtime.key(key) {
+        val state = rememberSwipeToDismissBoxState(
+            confirmValueChange = { value ->
+                if (value != SwipeToDismissBoxValue.Settled) onDismiss()
+                true
+            },
+        )
+        SwipeToDismissBox(state = state, backgroundContent = {}) { content() }
     }
 }
 
