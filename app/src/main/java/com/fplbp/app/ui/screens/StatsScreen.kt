@@ -1,24 +1,32 @@
 package com.fplbp.app.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -88,39 +96,82 @@ private fun TotalPoints(data: LeagueData, onTeam: (Long) -> Unit) {
     }
 }
 
+private data class Fame(val emoji: String, val label: String, val team: Long, val value: String, val note: String? = null)
+
 @Composable
 private fun Highlights(data: LeagueData, stats: List<TeamSeasonStats>) {
     if (stats.isEmpty()) return
-    SectionCard(title = "Sramota i slava") {
-        val lines = buildList {
-            stats.maxByOrNull { it.timesLast }?.takeIf { it.timesLast > 0 }?.let {
-                add("Najčešće na dnu" to "${data.teamName(it.entryId)} · ${it.timesLast}×")
-            }
-            stats.maxByOrNull { it.longestLosingStreak }?.takeIf { it.longestLosingStreak > 1 }?.let {
-                add("Najduži niz plaćanja" to "${data.teamName(it.entryId)} · ${it.longestLosingStreak} kola")
-            }
-            stats.maxByOrNull { it.currentSafeStreak }?.takeIf { it.currentSafeStreak > 0 }?.let {
-                add("Najduže bez duga (sada)" to "${data.teamName(it.entryId)} · ${it.currentSafeStreak} kola")
-            }
-            stats.filter { it.closestEscape != null }.minByOrNull { it.closestEscape!!.second }?.let {
-                add("Najtesnije spasavanje" to "${data.teamName(it.entryId)} · ${poena(it.closestEscape!!.second)} (K${it.closestEscape.first})")
-            }
-            stats.mapNotNull { s -> s.best?.let { s to it } }.maxByOrNull { it.second.second }?.let { (s, b) ->
-                add("Najbolje kolo" to "${data.teamName(s.entryId)} · ${b.second} (K${b.first})")
-            }
-            stats.mapNotNull { s -> s.worst?.let { s to it } }.minByOrNull { it.second.second }?.let { (s, w) ->
-                add("Najgore kolo" to "${data.teamName(s.entryId)} · ${w.second} (K${w.first})")
-            }
-            stats.maxByOrNull { it.hitsPoints }?.takeIf { it.hitsPoints > 0 }?.let {
-                add("Kralj hitova" to "${data.teamName(it.entryId)} · −${it.hitsPoints}")
-            }
+    val shame = buildList {
+        stats.maxByOrNull { it.timesLast }?.takeIf { it.timesLast > 0 }?.let { s ->
+            val debt = data.debtTable.firstOrNull { it.entryId == s.entryId }?.total
+            add(Fame("💸", "Najčešće na dnu", s.entryId, "${s.timesLast}×", debt?.let { Fmt.rsdShort(it) }))
         }
-        lines.forEachIndexed { i, (label, value) ->
-            Row(Modifier.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = App.colors.muted)
-                Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        stats.maxByOrNull { it.longestLosingStreak }?.takeIf { it.longestLosingStreak > 1 }?.let {
+            add(Fame("🔁", "Najduži niz plaćanja", it.entryId, "${it.longestLosingStreak} kola"))
+        }
+        stats.mapNotNull { s -> s.worst?.let { s to it } }.minByOrNull { it.second.second }?.let { (s, w) ->
+            add(Fame("🥶", "Najgore kolo", s.entryId, "${w.second}", "K${w.first}"))
+        }
+        stats.maxByOrNull { it.hitsPoints }?.takeIf { it.hitsPoints > 0 }?.let {
+            add(Fame("✂️", "Kralj hitova", it.entryId, "−${it.hitsPoints}"))
+        }
+    }
+    val glory = buildList {
+        stats.maxByOrNull { it.currentSafeStreak }?.takeIf { it.currentSafeStreak > 0 }?.let {
+            add(Fame("🛡️", "Najduže bez duga", it.entryId, "${it.currentSafeStreak} kola", "sada"))
+        }
+        stats.filter { it.closestEscape != null }.minByOrNull { it.closestEscape!!.second }?.let {
+            add(Fame("😅", "Najtesnije spasavanje", it.entryId, poena(it.closestEscape!!.second), "K${it.closestEscape.first}"))
+        }
+        stats.mapNotNull { s -> s.best?.let { s to it } }.maxByOrNull { it.second.second }?.let { (s, b) ->
+            add(Fame("🚀", "Najbolje kolo", s.entryId, "${b.second}", "K${b.first}"))
+        }
+    }
+    // One lazy-list item holds both cards, so stack them explicitly.
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (shame.isNotEmpty()) FameCard(data, "😬 Sramota", shame, App.colors.debt)
+        if (glory.isNotEmpty()) FameCard(data, "🏆 Slava", glory, App.colors.gold)
+    }
+}
+
+@Composable
+private fun FameCard(data: LeagueData, title: String, rows: List<Fame>, accent: Color) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Column(
+            Modifier
+                .background(Brush.horizontalGradient(listOf(accent.copy(alpha = 0.16f), accent.copy(alpha = 0.02f))))
+                .padding(16.dp)
+        ) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(6.dp))
+            rows.forEachIndexed { i, f ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(f.emoji, Modifier.width(32.dp), style = MaterialTheme.typography.titleMedium)
+                    Column(Modifier.weight(1f)) {
+                        Text(f.label, style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TeamDot(teamColor(data, f.team))
+                            Spacer(Modifier.width(6.dp))
+                            Text(data.teamName(f.team), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Box(
+                            Modifier.clip(RoundedCornerShape(50)).background(accent.copy(alpha = 0.22f))
+                                .padding(horizontal = 10.dp, vertical = 3.dp)
+                        ) {
+                            Text(f.value, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = accent)
+                        }
+                        f.note?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = App.colors.muted, modifier = Modifier.padding(top = 2.dp)) }
+                    }
+                }
+                if (i < rows.lastIndex) HorizontalDivider(color = App.colors.grid.copy(alpha = 0.6f))
             }
-            if (i < lines.lastIndex) HorizontalDivider(color = App.colors.grid)
         }
     }
 }
