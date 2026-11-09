@@ -107,13 +107,6 @@ private fun Header(data: LeagueData, v: GwView) {
             Spacer(Modifier.width(8.dp))
             if (v.fixturesTotal > 0) Text("Utakmice ${v.fixturesDone}/${v.fixturesTotal}", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
         }
-        if (o != null) {
-            Spacer(Modifier.height(8.dp))
-            Text(
-                o.losers.joinToString(" i ") { data.teamName(it) } + " · " + Fmt.rsdShort(o.share) + if (o.losers.size > 1) " svako" else "",
-                style = MaterialTheme.typography.titleMedium, color = App.colors.debt,
-            )
-        }
         Spacer(Modifier.height(8.dp))
         v.scores.sortedByDescending { it.net }.forEach { s ->
             Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -209,11 +202,13 @@ private fun Lineups(data: LeagueData, v: GwView) {
             ) {
                 TeamDot(teamColor(data, s.entryId))
                 Spacer(Modifier.width(8.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(data.teamName(s.entryId), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("klupa ${s.benchPoints}" + (s.chip?.let { " · ${Chips.label(it)}" } ?: ""),
-                        style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
-                }
+                Text(data.teamName(s.entryId), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                // Same style as Diferencijali: details muted, then the total.
+                Text(
+                    (s.chip?.let { "${Chips.short(it)} · " } ?: "") + "klupa ${s.benchPoints} · ",
+                    style = MaterialTheme.typography.labelMedium, color = App.colors.muted,
+                )
                 Text("${s.net}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 if (lu != null) Icon(
                     if (open) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,

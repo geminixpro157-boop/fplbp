@@ -277,9 +277,9 @@ fun TransferCard(data: LeagueData, r: TransferAnalysis.Result, held: Boolean, sh
                 if (kept.size > 1) add("u kolu ${r.gw}, ${data.playerName(r.elementIn)} ${r.weekIn} a ${data.playerName(r.elementOut)} ${r.weekOut}")
             }.joinToString(" · ")
         } else {
-            "bodovi u ovom kolu"
+            null // the card header already says these are this gameweek's points
         }
-        Text(footer, style = MaterialTheme.typography.labelSmall, color = App.colors.muted, modifier = Modifier.padding(top = 2.dp))
+        footer?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = App.colors.muted, modifier = Modifier.padding(top = 2.dp)) }
     }
 }
 
@@ -301,7 +301,7 @@ private fun PlayerLine(data: LeagueData, arrow: String, label: String, element: 
                     .clip(RoundedCornerShape(topEnd = 3.dp, bottomEnd = 3.dp)).background(color.copy(alpha = 0.75f))
             )
         }
-        Text("$pts b.", Modifier.width(52.dp), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        Text("$pts", Modifier.width(40.dp), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
     }
 }
 
