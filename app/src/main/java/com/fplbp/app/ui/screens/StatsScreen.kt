@@ -188,6 +188,7 @@ private fun HeatmapCard(data: LeagueData) {
             rows = teams.map { id -> data.teamName(id) to gws.map { g -> g.outcome?.ranks?.get(id) } },
             gws = gws.map { it.gw },
             teamCount = teams.size,
+            colors = teams.map { teamColor(data, it) },
         )
     }
 }

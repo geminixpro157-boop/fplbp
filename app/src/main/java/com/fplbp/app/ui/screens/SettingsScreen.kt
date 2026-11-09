@@ -100,12 +100,17 @@ fun SettingsScreen(vm: MainViewModel) {
             SectionCard(title = "Podaci") {
                 Text("Poslednje osvežavanje: ${time(prefs.lastSync)}", style = MaterialTheme.typography.bodySmall, color = App.colors.muted)
                 Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = vm::refresh) { Text("Osveži sada") }
-                    OutlinedButton(onClick = { export.launch("fplbp-${System.currentTimeMillis() / 1000}.json") }, enabled = data != null) { Text("Izvezi JSON") }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val pad = PaddingValues(horizontal = 6.dp)
+                    Button(onClick = vm::refresh, modifier = Modifier.weight(1f), contentPadding = pad) { Text("Osveži", maxLines = 1) }
+                    OutlinedButton(
+                        onClick = { export.launch("fplbp-${System.currentTimeMillis() / 1000}.json") }, enabled = data != null,
+                        modifier = Modifier.weight(1f), contentPadding = pad,
+                    ) { Text("Izvezi JSON", maxLines = 1) }
+                    OutlinedButton(onClick = { confirmReset = true }, modifier = Modifier.weight(1f), contentPadding = pad) {
+                        Text("Resetuj", color = App.colors.debt, maxLines = 1)
+                    }
                 }
-                Spacer(Modifier.height(4.dp))
-                TextButton(onClick = { confirmReset = true }) { Text("Obriši podatke i učitaj ponovo", color = App.colors.debt) }
             }
         }
         item {

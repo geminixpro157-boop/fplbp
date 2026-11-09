@@ -164,7 +164,7 @@ private fun teamLive(data: LeagueData, v: GwView, entryId: Long): TeamLive? {
 private fun LiveCard(data: LeagueData, v: GwView) {
     val o = v.outcome ?: return
     var open by rememberSaveable(v.gw) { mutableStateOf(false) }
-    val title = if (v.status == GwStatus.LIVE) "Uživo · Kolo ${v.gw}" else "Kolo ${v.gw} · čeka potvrdu"
+    val title = if (v.status == GwStatus.LIVE) "Uživo · Kolo ${v.gw}" else "Kolo ${v.gw}"
     val subtitle = buildString {
         if (v.status == GwStatus.LIVE) {
             if (v.fixturesTotal > 0) append("Odigrano ${v.fixturesDone}/${v.fixturesTotal} utakmica · ")

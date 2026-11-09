@@ -371,7 +371,7 @@ fun ColumnChart(
  * horizontally and open at the latest gameweek.
  */
 @Composable
-fun PositionHeatmap(rows: List<Pair<String, List<Int?>>>, gws: List<Int>, teamCount: Int, modifier: Modifier = Modifier) {
+fun PositionHeatmap(rows: List<Pair<String, List<Int?>>>, gws: List<Int>, teamCount: Int, modifier: Modifier = Modifier, colors: List<Color> = emptyList()) {
     val fits = gws.size <= FIT
     val scroll = rememberScrollState()
     LaunchedEffect(gws.size) { if (!fits) scroll.scrollTo(scroll.maxValue) }
@@ -379,9 +379,14 @@ fun PositionHeatmap(rows: List<Pair<String, List<Int?>>>, gws: List<Int>, teamCo
         val content: @Composable () -> Unit = {
             Column {
                 GwHeader(gws, fits)
-                rows.forEach { (name, ranks) ->
-                    Text(name, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 3.dp))
+                rows.forEachIndexed { i, (name, ranks) ->
+                    Row(Modifier.padding(top = 8.dp, bottom = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                        colors.getOrNull(i)?.let {
+                            Box(Modifier.size(10.dp).clip(RoundedCornerShape(3.dp)).background(it))
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Text(name, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                     Row(if (fits) Modifier.fillMaxWidth() else Modifier) {
                         ranks.forEach { r -> HeatCell(r, teamCount, if (fits) Modifier.weight(1f) else Modifier.width(30.dp)) }
                     }

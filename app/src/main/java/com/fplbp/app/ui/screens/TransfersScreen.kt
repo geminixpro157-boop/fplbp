@@ -258,33 +258,30 @@ fun TransferCard(data: LeagueData, r: TransferAnalysis.Result, held: Boolean, sh
             Text(signed(diff), style = MaterialTheme.typography.titleMedium, color = signColor(diff), fontWeight = FontWeight.Bold)
         }
         val max = maxOf(inPts, outPts, 1)
-        PlayerLine(data, "↑", "Ušao", r.elementIn, inPts, max, App.colors.safe)
-        PlayerLine(data, "↓", "Izašao", r.elementOut, outPts, max, App.colors.debt)
-        val footer = if (held) {
+        // In the season view, also show each player's points in the transfer gameweek itself.
+        val gwNote = held && r.heldGws.size > 1
+        PlayerLine(data, "↑", "Ušao", r.elementIn, inPts, max, App.colors.safe, if (gwNote) "kolo ${r.gw}: ${r.weekIn}" else null)
+        PlayerLine(data, "↓", "Izašao", r.elementOut, outPts, max, App.colors.debt, if (gwNote) "kolo ${r.gw}: ${r.weekOut}" else null)
+        if (held) {
             val kept = r.heldGws
-            val status = when {
-                kept.isEmpty() -> null
-                kept.last() >= lastGw -> "još u timu"
-                else -> "prodat u kolu ${kept.last() + 1}"
-            }
-            buildList {
-                when (kept.size) {
-                    0 -> add("nije igrao za tim")
-                    1 -> add("1 kolo u timu (kolo ${kept[0]})")
-                    else -> add("${kola(kept.size)} u timu (kola ${kept.first()}–${kept.last()})")
+            Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Label(
+                    when (kept.size) { 0 -> "nije igrao za tim"; 1 -> "1 kolo u timu"; else -> "${kola(kept.size)} u timu" },
+                    App.colors.muted,
+                )
+                when {
+                    kept.isEmpty() -> Unit
+                    kept.last() >= lastGw -> Label("još u timu", App.colors.safe)
+                    else -> Label("prodat u kolu ${kept.last() + 1}", App.colors.muted)
                 }
-                status?.let { add(it) }
-                if (kept.size > 1) add("u kolu ${r.gw}, ${data.playerName(r.elementIn)} ${r.weekIn} a ${data.playerName(r.elementOut)} ${r.weekOut}")
-            }.joinToString(" · ")
-        } else {
-            null // the card header already says these are this gameweek's points
+            }
         }
-        footer?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = App.colors.muted, modifier = Modifier.padding(top = 2.dp)) }
+
     }
 }
 
 @Composable
-private fun PlayerLine(data: LeagueData, arrow: String, label: String, element: Int, pts: Int, max: Int, color: Color) {
+private fun PlayerLine(data: LeagueData, arrow: String, label: String, element: Int, pts: Int, max: Int, color: Color, note: String? = null) {
     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(arrow, Modifier.width(14.dp), color = color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
         Text(label, Modifier.width(48.dp), style = MaterialTheme.typography.labelSmall, color = color)
@@ -301,7 +298,20 @@ private fun PlayerLine(data: LeagueData, arrow: String, label: String, element: 
                     .clip(RoundedCornerShape(topEnd = 3.dp, bottomEnd = 3.dp)).background(color.copy(alpha = 0.75f))
             )
         }
-        Text("$pts", Modifier.width(40.dp), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        Column(Modifier.width(70.dp), horizontalAlignment = Alignment.End) {
+            Text("$pts", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            note?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = App.colors.muted, maxLines = 1) }
+        }
+    }
+}
+
+/** Small rounded label, e.g. "8 kola u timu", "još u timu". */
+@Composable
+private fun Label(text: String, color: Color) {
+    Box(
+        Modifier.clip(RoundedCornerShape(50)).background(color.copy(alpha = 0.14f)).padding(horizontal = 8.dp, vertical = 2.dp)
+    ) {
+        Text(text, style = MaterialTheme.typography.labelSmall, color = if (color == App.colors.muted) MaterialTheme.colorScheme.onSurfaceVariant else color)
     }
 }
 
