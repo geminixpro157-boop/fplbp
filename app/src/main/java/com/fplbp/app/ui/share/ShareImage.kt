@@ -178,8 +178,8 @@ object ShareImage {
 
     fun shareAppLink(context: Context) {
         val link = appLink() ?: return
-        val text = "FPLBP, aplikacija za našu ligu (ko duguje za večeru).\n" +
-            "Najnovija verzija: $link\n" +
+        val text = "FPLBP – aplikacija za našu FPL ligu: tabela dugovanja, uživo kolo i statistika.\n" +
+            "Preuzmi najnoviju verziju: $link\n" +
             "Posle preuzimanja otvori fajl i dozvoli instalaciju iz nepoznatih izvora."
         val send = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"

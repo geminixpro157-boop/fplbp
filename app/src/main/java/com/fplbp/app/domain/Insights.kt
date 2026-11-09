@@ -38,13 +38,15 @@ object Insights {
         return acc
     }
 
-    data class Popular(val element: Int, val times: Int, val avgRaw: Double, val teams: Set<Long>)
+    data class Popular(val element: Int, val times: Int, val avgRaw: Double, val byTeam: Map<Long, Int>) {
+        val teams: Set<Long> get() = byTeam.keys
+    }
 
     /** Most captained players across the league (raw points average). */
     fun popularCaptains(gws: List<Gw>): List<Popular> {
         val picks = gws.flatMap { g -> g.lineups.mapNotNull { (team, lu) -> armband(lu)?.let { team to it } } }
         return picks.groupBy { it.second.element }.map { (el, list) ->
-            Popular(el, list.size, list.map { it.second.points }.average(), list.map { it.first }.toSet())
+            Popular(el, list.size, list.map { it.second.points }.average(), list.groupingBy { it.first }.eachCount())
         }.sortedWith(compareByDescending<Popular> { it.times }.thenByDescending { it.avgRaw })
     }
 

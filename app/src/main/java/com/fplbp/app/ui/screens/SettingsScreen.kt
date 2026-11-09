@@ -116,14 +116,20 @@ fun SettingsScreen(vm: MainViewModel) {
                     style = MaterialTheme.typography.bodySmall, color = App.colors.muted,
                 )
                 Spacer(Modifier.height(8.dp))
-                if (ShareImage.appLink() != null) {
-                    OutlinedButton(onClick = { ShareImage.shareAppLink(context) }) { Text("Podeli aplikaciju") }
-                    Spacer(Modifier.height(4.dp))
-                }
-                if (update != null) {
-                    Button(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(update!!.url))) }) { Text("Preuzmi novu verziju") }
-                } else if (BuildConfig.GITHUB_REPO.isNotBlank()) {
-                    OutlinedButton(onClick = { vm.checkUpdate() }) { Text("Proveri ažuriranja") }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (ShareImage.appLink() != null) {
+                        OutlinedButton(onClick = { ShareImage.shareAppLink(context) }, modifier = Modifier.weight(1f)) {
+                            Text("Podeli link", maxLines = 1)
+                        }
+                    }
+                    if (update != null) {
+                        Button(
+                            onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(update!!.url))) },
+                            modifier = Modifier.weight(1f),
+                        ) { Text("Nova verzija", maxLines = 1) }
+                    } else if (BuildConfig.GITHUB_REPO.isNotBlank()) {
+                        OutlinedButton(onClick = { vm.checkUpdate() }, modifier = Modifier.weight(1f)) { Text("Ažuriranja", maxLines = 1) }
+                    }
                 }
             }
         }

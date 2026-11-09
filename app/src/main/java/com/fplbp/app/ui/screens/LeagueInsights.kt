@@ -50,20 +50,49 @@ private val posColors = mapOf(
 
 // ------------------------------------------------------------------ 1. captains
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CaptainsCard(data: LeagueData) {
     val popular = Insights.popularCaptains(finalInsightGws(data)).take(8)
     if (popular.isEmpty()) return
-    SectionCard(title = "Najčešći kapiteni u sezoni", subtitle = "Završena kola · prosek je bez množenja") {
-        popular.forEach { p ->
-            Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(data.playerName(p.element), style = MaterialTheme.typography.bodyMedium)
+    val teams = data.teams.map { it.entryId }.sorted()
+    SectionCard(title = "Najčešći kapiteni u sezoni", subtitle = "Završena kola · broj uz boju = koliko puta ga je tim kapitenirao · prosek bez množenja") {
+        popular.forEachIndexed { i, p ->
+            Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(data.playerName(p.element), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.width(6.dp))
+                    ClubChip(data.clubShort(p.element), data.players[p.element]?.elementType)
+                    Spacer(Modifier.weight(1f))
+                    Text("${p.times}× · prosek ${Fmt.decimal(p.avgRaw, 1)}", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
+                }
+                Spacer(Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    teams.filter { (p.byTeam[it] ?: 0) > 0 }.sortedByDescending { p.byTeam[it] }.forEach { id ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TeamDot(teamColor(data, id))
+                            Spacer(Modifier.width(4.dp))
+                            Text("${p.byTeam[id]}", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+            }
+            if (i < popular.lastIndex) HorizontalDivider(color = App.colors.grid)
+        }
+        HorizontalDivider(Modifier.padding(top = 4.dp, bottom = 8.dp), color = App.colors.grid)
+        TeamLegend(data, teams)
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TeamLegend(data: LeagueData, teams: List<Long>) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        teams.forEach { id ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TeamDot(teamColor(data, id))
                 Spacer(Modifier.width(6.dp))
-                ClubChip(data.clubShort(p.element), data.players[p.element]?.elementType)
-                Spacer(Modifier.width(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) { p.teams.sorted().forEach { TeamDot(teamColor(data, it)) } }
-                Spacer(Modifier.weight(1f))
-                Text("${p.times}× · prosek ${Fmt.decimal(p.avgRaw, 1)}", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
+                Text(data.teamName(id), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -93,15 +122,7 @@ fun OwnershipCard(data: LeagueData, v: GwView) {
             }
         }
         HorizontalDivider(Modifier.padding(top = 4.dp, bottom = 8.dp), color = App.colors.grid)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            teams.forEach { id ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    TeamDot(teamColor(data, id))
-                    Spacer(Modifier.width(6.dp))
-                    Text(data.teamName(id), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
+        TeamLegend(data, teams)
     }
 }
 
@@ -190,20 +211,24 @@ fun PositionsCard(data: LeagueData) {
 fun ClubsCard(data: LeagueData) {
     val byClub = Insights.pointsBy(finalInsightGws(data)) { data.players[it]?.clubId }
     if (byClub.isEmpty()) return
-    SectionCard(title = "Bodovi po klubu", subtitle = "Tri kluba od kojih je tim dobio najviše bodova") {
+    SectionCard(title = "Bodovi po klubu", subtitle = "Pet klubova od kojih je tim dobio najviše bodova, ostalo zajedno") {
         data.teams.sortedBy { it.entryId }.forEachIndexed { i, t ->
             val m = byClub[t.entryId].orEmpty()
             val total = m.values.sum()
-            val top = m.entries.sortedByDescending { it.value }.take(3)
+            val sorted = m.entries.sortedByDescending { it.value }
+            val rest = sorted.drop(5).sumOf { it.value }
+            val top: List<Pair<String, Int>> = sorted.take(5).map { (data.clubs[it.key]?.shortName ?: "?") to it.value } +
+                listOfNotNull(if (rest > 0) "Ostalo" to rest else null)
             Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 TeamName(data, t.entryId, Modifier)
                 top.forEach { (club, pts) ->
                     Row(Modifier.padding(start = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(data.clubs[club]?.shortName ?: "?", Modifier.width(44.dp), style = MaterialTheme.typography.labelMedium,
+                        Text(club, Modifier.width(56.dp), style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold, color = App.colors.muted)
                         Box(Modifier.weight(1f)) {
                             Box(Modifier.fillMaxWidth((pts.toFloat() / total.coerceAtLeast(1)).coerceIn(0.02f, 1f)).height(8.dp)
-                                .clip(RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp)).background(teamColor(data, t.entryId)))
+                                .clip(RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
+                                .background(if (club == "Ostalo") App.colors.muted.copy(alpha = 0.5f) else teamColor(data, t.entryId)))
                         }
                         Text("${pct(pts, total)}%", Modifier.width(48.dp), textAlign = TextAlign.End,
                             style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
