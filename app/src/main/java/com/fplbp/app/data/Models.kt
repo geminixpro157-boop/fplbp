@@ -63,6 +63,10 @@ data class PlayerContribution(
     /** Extra points from the captain armband (the 2nd/3rd copy). */
     val captainExtra: Int,
     val gwsCounted: Int,
+    /** Event counts (FPL identifiers: goals_scored, assists, clean_sheets, saves, yellow_cards…), no multiplier. */
+    val counts: Map<String, Int> = emptyMap(),
+    /** Raw bonus points (no multiplier), incl. predicted bonus. */
+    val bonusRaw: Int = 0,
 )
 
 data class CaptainPick(

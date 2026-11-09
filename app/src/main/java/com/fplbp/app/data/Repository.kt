@@ -428,11 +428,18 @@ class Repository(
             for (p in lu.picks) {
                 if (p.multiplier > 0) {
                     val cats = HashMap<String, Int>()
+                    val counts = HashMap<String, Int>()
+                    var bonusRaw = 0
                     stats[v.gw to p.element].orEmpty().forEach { s ->
                         val c = Category.of(s.identifier)
                         cats[c] = (cats[c] ?: 0) + s.points * p.multiplier
+                        counts[s.identifier] = (counts[s.identifier] ?: 0) + s.value
+                        if (s.identifier == "bonus") bonusRaw += s.points
                     }
-                    provBonus[v.gw to p.element]?.let { cats["bonus"] = (cats["bonus"] ?: 0) + it.points * p.multiplier }
+                    provBonus[v.gw to p.element]?.let {
+                        cats["bonus"] = (cats["bonus"] ?: 0) + it.points * p.multiplier
+                        bonusRaw += it.points
+                    }
                     val total = p.points * p.multiplier
                     val prev = map[p.element]
                     map[p.element] = PlayerContribution(
@@ -441,6 +448,8 @@ class Repository(
                         byCategory = (prev?.byCategory.orEmpty().keys + cats.keys).associateWith { (prev?.byCategory?.get(it) ?: 0) + (cats[it] ?: 0) },
                         captainExtra = (prev?.captainExtra ?: 0) + p.points * (p.multiplier - 1).coerceAtLeast(0),
                         gwsCounted = (prev?.gwsCounted ?: 0) + 1,
+                        counts = (prev?.counts.orEmpty().keys + counts.keys).associateWith { (prev?.counts?.get(it) ?: 0) + (counts[it] ?: 0) },
+                        bonusRaw = (prev?.bonusRaw ?: 0) + bonusRaw,
                     )
                 }
                 val wears = (p.isCaptain && !lu.captaincyToVice) || p.captaincyPassed

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -198,10 +199,9 @@ private fun ShareTable(
     Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Spacer(if (fullNames) Modifier.weight(1f) else Modifier.width(22.dp))
         columns.forEach { c ->
-            Text(c, Modifier.width(if (fullNames) 50.dp else 42.dp), textAlign = TextAlign.Center,
+            Text(c, if (fullNames) Modifier.width(50.dp) else Modifier.weight(1f), textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = App.colors.muted, maxLines = 1)
         }
-        if (!fullNames) Spacer(Modifier.weight(1f))
     }
     teams.forEach { id ->
         Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -210,7 +210,7 @@ private fun ShareTable(
             pctRows.getValue(id).forEachIndexed { c, p ->
                 val best = p == colMax[c] && p > 0
                 Box(
-                    Modifier.width(if (fullNames) 50.dp else 42.dp).height(30.dp).padding(1.dp)
+                    (if (fullNames) Modifier.width(50.dp) else Modifier.weight(1f)).height(30.dp).padding(1.dp)
                         .clip(RoundedCornerShape(5.dp))
                         .background(gold.copy(alpha = 0.06f + 0.5f * p / maxAll)),
                     contentAlignment = Alignment.Center,
@@ -220,7 +220,6 @@ private fun ShareTable(
                         color = MaterialTheme.colorScheme.onSurface)
                 }
             }
-            if (!fullNames) Spacer(Modifier.weight(1f))
         }
     }
     if (!fullNames) {
@@ -248,16 +247,23 @@ fun PositionsCard(data: LeagueData) {
 fun ClubsCard(data: LeagueData) {
     val byClub = Insights.pointsBy(finalInsightGws(data)) { data.players[it]?.clubId }
     if (byClub.isEmpty()) return
-    // Same columns for every team: the 5 clubs with the most points across the league, then the rest.
-    val top = byClub.values.flatMap { it.entries }.groupBy({ it.key }, { it.value })
-        .mapValues { it.value.sum() }.entries.sortedByDescending { it.value }.take(5).map { it.key }
-    SectionCard(title = "Bodovi po klubu", subtitle = "Pet klubova sa najviše bodova u ligi, ostalo zajedno · najveći u koloni podebljan") {
-        ShareTable(
-            data = data,
-            columns = top.map { data.clubs[it]?.shortName ?: "?" } + "Ost.",
-            values = byClub.mapValues { (_, m) -> top.map { m[it] ?: 0 } + (m.values.sum() - top.sumOf { m[it] ?: 0 }) },
-            fullNames = false,
-        )
+    // Same columns for every team: the clubs with the most points across the league (as many as fit), then the rest.
+    val ranked = byClub.values.flatMap { it.entries }.groupBy({ it.key }, { it.value })
+        .mapValues { it.value.sum() }.entries.sortedByDescending { it.value }.map { it.key }
+    SectionCard(title = "Bodovi po klubu", subtitle = "Klubovi sa najviše bodova u ligi, ostalo zajedno · najveći u koloni podebljan") {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            // Each column needs ~42dp for "25%"; one column is "Ost.", 22dp go to the team dot.
+            val fit = (((maxWidth - 22.dp) / 42.dp).toInt() - 1).coerceIn(3, 10)
+            val top = ranked.take(fit)
+            Column {
+                ShareTable(
+                    data = data,
+                    columns = top.map { data.clubs[it]?.shortName ?: "?" } + "Ost.",
+                    values = byClub.mapValues { (_, m) -> top.map { m[it] ?: 0 } + (m.values.sum() - top.sumOf { m[it] ?: 0 }) },
+                    fullNames = false,
+                )
+            }
+        }
     }
 }
 

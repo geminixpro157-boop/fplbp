@@ -229,3 +229,34 @@ private fun Tag(text: String, color: Color) = Text(text, style = MaterialTheme.t
 
 @Composable
 private fun CardIcon(color: Color) = Box(Modifier.size(9.dp, 12.dp).clip(RoundedCornerShape(2.dp)).background(color))
+
+/**
+ * Season totals as icons with counts: ⚽ ×14  👟 ×2  🛡 ×4  ★ ×28 …
+ * [counts] uses FPL identifiers (goals_scored, assists, clean_sheets, saves, …); [bonus] = bonus points.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun StatCounts(counts: Map<String, Int>, bonus: Int, modifier: Modifier = Modifier) {
+    val on = MaterialTheme.colorScheme.onSurface
+    @Composable
+    fun item(icon: @Composable () -> Unit, n: Int) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            icon()
+            Spacer(Modifier.width(3.dp))
+            Text("×$n", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+    fun c(id: String) = counts[id] ?: 0
+    FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (c("goals_scored") > 0) item({ Ev(R.drawable.ic_ev_goal, on, "golovi") }, c("goals_scored"))
+        if (c("assists") > 0) item({ Ev(R.drawable.ic_ev_assist, on, "asistencije") }, c("assists"))
+        if (c("clean_sheets") > 0) item({ Ev(R.drawable.ic_ev_cs, App.colors.safe, "čiste mreže") }, c("clean_sheets"))
+        if (bonus > 0) item({ Ev(R.drawable.ic_ev_bonus, App.colors.gold, "bonus poeni") }, bonus)
+        if (c("saves") > 0) item({ Ev(R.drawable.ic_ev_save, on, "odbrane") }, c("saves"))
+        if (c("penalties_saved") > 0) item({ Ev(R.drawable.ic_ev_save, App.colors.gold, "odbranjeni penali") }, c("penalties_saved"))
+        if (c("yellow_cards") > 0) item({ CardIcon(Color(0xFFF5C518)) }, c("yellow_cards"))
+        if (c("red_cards") > 0) item({ CardIcon(Color(0xFFE5484D)) }, c("red_cards"))
+        if (c("own_goals") > 0) item({ Ev(R.drawable.ic_ev_goal, App.colors.debt, "autogolovi") }, c("own_goals"))
+        if (c("penalties_missed") > 0) item({ Ev(R.drawable.ic_ev_pen_miss, App.colors.debt, "promašeni penali") }, c("penalties_missed"))
+    }
+}

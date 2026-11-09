@@ -1,6 +1,11 @@
 package com.fplbp.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import com.fplbp.app.ui.components.StatCounts
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -108,30 +113,10 @@ private fun androidx.compose.foundation.lazy.LazyListScope.teamView(data: League
         SectionCard(title = "Top 10 igrača", subtitle = "Bodovi koji su ušli u zbir tima") {
             val maxTotal = list.firstOrNull()?.total?.coerceAtLeast(1) ?: 1
             val color = teamColor(data, entryId)
-            list.take(10).forEachIndexed { i, c ->
-                Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("${i + 1}.", Modifier.width(24.dp), style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
-                        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                            Text(data.playerName(c.element), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                            Spacer(Modifier.width(6.dp))
-                            ClubChip(data.clubShort(c.element), data.players[c.element]?.elementType)
-                        }
-                        Text("${c.total}", Modifier.width(48.dp), style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End)
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    Box(Modifier.padding(start = 24.dp).fillMaxWidth(c.total.toFloat() / maxTotal).height(6.dp)
-                        .clip(RoundedCornerShape(topEnd = 3.dp, bottomEnd = 3.dp)).background(color))
-                    Spacer(Modifier.height(4.dp))
-                    Text(breakdown(c), Modifier.padding(start = 24.dp), style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
-                }
-            }
+            list.take(10).forEachIndexed { i, c -> TopPlayer(data, i, c, maxTotal, color) }
             Spacer(Modifier.height(6.dp))
             Text(
-                "G golovi · A asistencije · ČM čista mreža · B bonus · Min minutaža · DEF def. doprinos · Odb odbrane · " +
-                    "kapitenski bodovi su uračunati",
+                "Tapni igrača za raspodelu bodova · kapitenski bodovi su uračunati u zbir",
                 style = MaterialTheme.typography.labelSmall, color = App.colors.muted,
             )
         }
@@ -148,7 +133,8 @@ private fun androidx.compose.foundation.lazy.LazyListScope.teamView(data: League
                 StatTile("Najgori", "${worst.points}", Modifier.weight(1f), sub = "${data.playerName(worst.element)} · K${worst.gw}")
             }
             Spacer(Modifier.height(12.dp))
-            val flopColor = App.colors.debt
+            // Grey stands out against every team color (coral clashed with orange teams).
+            val flopColor = App.colors.muted
             ColumnChart(
                 xLabels = caps.map { "${it.gw}" },
                 values = caps.map { it.points },
@@ -159,6 +145,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.teamView(data: League
                     "Kolo ${c.gw}: ${data.playerName(c.element)} · ${poena(c.points)}" + if (c.passedToVice) " (vice-kapiten)" else ""
                 },
             )
+            Text("Sivo = kapiten doneo 4 boda ili manje", style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
         }
     }
 }
@@ -170,9 +157,39 @@ private fun androidx.compose.foundation.lazy.LazyListScope.leagueView(data: Leag
     item { ClubsCard(data) }
 }
 
+@Composable
+private fun TopPlayer(data: LeagueData, i: Int, c: PlayerContribution, maxTotal: Int, color: Color) {
+    var open by remember(c.element) { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth().clickable { open = !open }.padding(vertical = 6.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("${i + 1}.", Modifier.width(24.dp), style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Text(data.playerName(c.element), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Spacer(Modifier.width(6.dp))
+                ClubChip(data.clubShort(c.element), data.players[c.element]?.elementType)
+            }
+            Text("${c.total}", Modifier.width(48.dp), style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End)
+        }
+        Spacer(Modifier.height(4.dp))
+        Box(Modifier.padding(start = 24.dp).fillMaxWidth(c.total.toFloat() / maxTotal).height(6.dp)
+            .clip(RoundedCornerShape(topEnd = 3.dp, bottomEnd = 3.dp)).background(color))
+        Spacer(Modifier.height(6.dp))
+        Row(Modifier.padding(start = 24.dp), verticalAlignment = Alignment.CenterVertically) {
+            StatCounts(c.counts, c.bonusRaw, Modifier.weight(1f))
+            Text("${c.gwsCounted} kola", style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
+        }
+        AnimatedVisibility(open) {
+            Text(breakdown(c), Modifier.padding(start = 24.dp, top = 6.dp), style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
 /** Full one-line breakdown, e.g. "G 24 · A 9 · ČM 4 · B 11 · Min 30 · Minusi −3". */
 private fun breakdown(c: PlayerContribution): String {
-    val parts = Category.POSITIVE.mapNotNull { cat -> c.byCategory[cat]?.takeIf { it != 0 }?.let { "${Category.short(cat)} $it" } }
+    val parts = Category.POSITIVE.mapNotNull { cat -> c.byCategory[cat]?.takeIf { it != 0 }?.let { "${Category.label(cat)} $it" } }
     val minus = Category.MINUS.sumOf { c.byCategory[it] ?: 0 }
     return (parts + listOfNotNull(if (minus != 0) "Minusi $minus" else null)).joinToString(" · ") +
         if (c.captainExtra > 0) " · od toga kapiten +${c.captainExtra}" else ""
