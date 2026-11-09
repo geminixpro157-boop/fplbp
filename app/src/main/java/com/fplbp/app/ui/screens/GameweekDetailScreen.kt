@@ -60,6 +60,8 @@ fun GameweekDetailScreen(data: LeagueData, gw: Int, onChangeGw: ((Int) -> Unit)?
     ) {
         if (onChangeGw != null) item { GwSwitcher(data, v.gw, onChangeGw) }
         item { Header(data, v) }
+        val weeks = data.transferWeeks.filter { it.gw == v.gw }
+        if (weeks.isNotEmpty()) item { WeekTransfers(data, v, weeks) }
         if (v.lineups.size >= 2) item { Differentials(data, v) }
         item { Lineups(data, v) }
     }
@@ -129,6 +131,31 @@ private fun Header(data: LeagueData, v: GwView) {
                 "Bodovi uključuju predviđene izmene sa klupe, prelazak kapitenske trake i bonus po BPS-u. Dug se računa tek kad FPL potvrdi kolo.",
                 style = MaterialTheme.typography.labelSmall, color = App.colors.muted,
             )
+        }
+    }
+}
+
+@Composable
+private fun WeekTransfers(data: LeagueData, v: GwView, weeks: List<com.fplbp.app.domain.TransferAnalysis.Week>) {
+    SectionCard(title = "Transferi ovog kola", subtitle = "Bodovi ovog kola: novi igrač naspram prodatog (bez kapitena)") {
+        val order = v.scores.sortedByDescending { it.net }.map { it.entryId }
+        val sorted = weeks.sortedBy { order.indexOf(it.entryId) }
+        sorted.forEachIndexed { i, w ->
+            Row(Modifier.fillMaxWidth().padding(top = if (i == 0) 0.dp else 8.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                TeamDot(teamColor(data, w.entryId))
+                Spacer(Modifier.width(8.dp))
+                Text(data.teamName(w.entryId), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (w.results.any { it.wildcard }) { Pill("Wildcard", App.colors.gold); Spacer(Modifier.width(8.dp)) }
+                Text(signed(w.net), style = MaterialTheme.typography.titleSmall, color = signColor(w.net))
+            }
+            w.freeHit?.let { fh ->
+                Text("Free Hit: ${fh.points} umesto ${fh.wouldHave} sa prošlonedeljnim timom (${signed(fh.diff)})",
+                    style = MaterialTheme.typography.bodySmall)
+            }
+            w.results.forEach { TransferRow(data, it, weekOnly = true) }
+            if (w.hit > 0) Text("Hit −${w.hit}", style = MaterialTheme.typography.labelMedium, color = App.colors.debt)
+            if (i < sorted.lastIndex) HorizontalDivider(Modifier.padding(top = 6.dp), color = App.colors.grid)
         }
     }
 }

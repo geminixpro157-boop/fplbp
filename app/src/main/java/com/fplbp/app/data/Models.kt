@@ -12,6 +12,7 @@ import com.fplbp.app.domain.GwScores
 import com.fplbp.app.domain.LineupResult
 import com.fplbp.app.domain.TeamScore
 import com.fplbp.app.domain.TeamSeasonStats
+import com.fplbp.app.domain.TransferAnalysis
 
 enum class GwStatus { FINAL, AWAITING, LIVE }
 
@@ -95,6 +96,9 @@ data class LeagueData(
     val seasonStats: Map<Long, TeamSeasonStats>,
     val currentGw: Int?,
     val lastSync: Long,
+    val transfers: List<TransferAnalysis.Result> = emptyList(),
+    val transferSummary: Map<Long, TransferAnalysis.TeamSummary> = emptyMap(),
+    val transferWeeks: List<TransferAnalysis.Week> = emptyList(),
 ) {
     val teamById: Map<Long, TeamEntity> = teams.associateBy { it.entryId }
     val liveGw: GwView? get() = gws.lastOrNull { !it.isFinal }

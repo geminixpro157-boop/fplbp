@@ -86,3 +86,7 @@ data class ChipWindowEntity(val name: String, val number: Int, val startEvent: I
 /** Which notifications were already sent (key like "settle-11"). */
 @Entity(tableName = "notif_log", primaryKeys = ["key"])
 data class NotifLogEntity(val key: String, val sentAt: Long)
+
+/** One transfer (FPL's transfer history). Free Hit moves may be included; the analysis skips them. */
+@Entity(tableName = "transfer", primaryKeys = ["entryId", "time", "elementIn"])
+data class TransferEntity(val entryId: Long, val gw: Int, val elementIn: Int, val elementOut: Int, val time: String)

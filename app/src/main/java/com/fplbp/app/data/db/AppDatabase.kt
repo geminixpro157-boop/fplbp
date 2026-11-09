@@ -9,6 +9,8 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Upsert
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Dao
 interface FplDao {
@@ -62,6 +64,13 @@ interface FplDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertChipWindows(c: List<ChipWindowEntity>)
     @Query("SELECT * FROM chip_window ORDER BY startEvent, name") suspend fun chipWindows(): List<ChipWindowEntity>
 
+    // Transfers
+    @Query("DELETE FROM transfer WHERE entryId = :entryId") suspend fun clearTransfers(entryId: Long)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertTransfers(t: List<TransferEntity>)
+    @Query("SELECT * FROM transfer") suspend fun transfers(): List<TransferEntity>
+
+    @Query("SELECT COUNT(*) FROM player_gw WHERE gw = :gw") suspend fun playerGwCount(gw: Int): Int
+
     // Notifications
     @Query("SELECT COUNT(*) FROM notif_log WHERE `key` = :key") suspend fun notifSent(key: String): Int
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun logNotif(n: NotifLogEntity)
@@ -72,8 +81,9 @@ interface FplDao {
         TeamEntity::class, GameweekEntity::class, TeamGwEntity::class, ClubEntity::class, PlayerEntity::class,
         PickEntity::class, PlayerGwEntity::class, PlayerGwStatEntity::class, FixtureEntity::class,
         ProvisionalBonusEntity::class, ChipUsageEntity::class, ChipWindowEntity::class, NotifLogEntity::class,
+        TransferEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -82,7 +92,19 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "fplbp.db")
+                .addMigrations(MIGRATION_1_2)
                 .fallbackToDestructiveMigration()
                 .build()
+
+        /** v2 adds the transfer table; everything else (incl. notification history) is kept. */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `transfer` (`entryId` INTEGER NOT NULL, `gw` INTEGER NOT NULL, " +
+                        "`elementIn` INTEGER NOT NULL, `elementOut` INTEGER NOT NULL, `time` TEXT NOT NULL, " +
+                        "PRIMARY KEY(`entryId`, `time`, `elementIn`))"
+                )
+            }
+        }
     }
 }

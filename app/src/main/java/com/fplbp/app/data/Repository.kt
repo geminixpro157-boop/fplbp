@@ -17,6 +17,7 @@ import com.fplbp.app.data.db.PlayerGwStatEntity
 import com.fplbp.app.data.db.ProvisionalBonusEntity
 import com.fplbp.app.data.db.TeamEntity
 import com.fplbp.app.data.db.TeamGwEntity
+import com.fplbp.app.data.db.TransferEntity
 import com.fplbp.app.domain.BonusPredictor
 import com.fplbp.app.domain.DebtCalculator
 import com.fplbp.app.domain.LiveEngine
@@ -24,6 +25,7 @@ import com.fplbp.app.domain.PickIn
 import com.fplbp.app.domain.PlayerLive
 import com.fplbp.app.domain.SeasonStats
 import com.fplbp.app.domain.TeamScore
+import com.fplbp.app.domain.TransferAnalysis
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -162,6 +164,32 @@ class Repository(
             progress(0.1f + 0.15f * (i + 1) / teams.size, "Istorija: ${t.name}")
         }
 
+        // 3b. Transfers: they only change at a deadline, so fetch once per gameweek (or daily).
+        val lastDeadline = gws.filter { it.deadline <= now }.maxOfOrNull { it.deadline } ?: 0L
+        val haveTransfers = dao.transfers().map { it.entryId }.toSet()
+        if (prefs.lastTransfersFetch < lastDeadline || now - prefs.lastTransfersFetch > DAY ||
+            teams.any { it.entryId !in haveTransfers && prefs.lastTransfersFetch == 0L }
+        ) {
+            for (t in teams) {
+                pause()
+                val list = api.transfers(t.entryId)
+                db.withTransaction {
+                    dao.clearTransfers(t.entryId)
+                    dao.insertTransfers(list.map { TransferEntity(t.entryId, it.event, it.elementIn, it.elementOut, it.time) })
+                }
+            }
+            prefs.lastTransfersFetch = now
+        }
+
+        // 3c. One-time backfill: confirmed GWs synced before v1.0.15 only stored owned players' points.
+        gws.filter { it.finalLocal && it.deadline <= now }.forEach { gw ->
+            if (dao.playerGwCount(gw.id) < 200) {
+                pause()
+                val live = api.live(gw.id)
+                dao.insertPlayerGw(live.elements.map { PlayerGwEntity(gw.id, it.id, it.stats.minutes, it.stats.totalPoints) })
+            }
+        }
+
         // 4. Details (picks, live points, fixtures) for every started GW not yet final.
         val pending = gws.filter { it.deadline <= now && !it.finalLocal }.sortedBy { it.id }
         pending.forEachIndexed { i, gw ->
@@ -218,7 +246,8 @@ class Repository(
         val owned = (dao.picks().filter { it.gw == gw.id }.map { it.element } + newPicks.map { it.element }).toSet()
         val liveOwned = live.elements.filter { it.id in owned }
 
-        val playerGw = liveOwned.map { PlayerGwEntity(gw.id, it.id, it.stats.minutes, it.stats.totalPoints) }
+        // Points of every player (also ones nobody owns) - needed to judge transfers.
+        val playerGw = live.elements.map { PlayerGwEntity(gw.id, it.id, it.stats.minutes, it.stats.totalPoints) }
         val stats = liveOwned.flatMap { el ->
             el.explain.flatMap { it.stats }
                 .groupBy { it.identifier }
@@ -290,6 +319,7 @@ class Repository(
         val debt = prefs.debtAmount
 
         val teamGwBy = teamGws.groupBy { it.gw }
+        val freeHits = mutableListOf<TransferAnalysis.FreeHit>()
         val picksBy = picks.groupBy { it.gw to it.entryId }
 
         val views = gameweeks.filter { it.deadline <= now && (teamGwBy[it.id] != null || picks.any { p -> p.gw == it.id }) }.map { gw ->
@@ -310,24 +340,37 @@ class Repository(
             val scores = teams.mapNotNull { t ->
                 val row = teamGwBy[gw.id]?.firstOrNull { it.entryId == t.entryId }
                 val tp = picksBy[gw.id to t.entryId].orEmpty()
+                fun liveOf(element: Int): PlayerLive {
+                    val pl = players[element]
+                    val pg = playerGws[gw.id to element]
+                    val bonus = provBonus[gw.id to element]?.points ?: 0
+                    return PlayerLive(
+                        element = element,
+                        elementType = pl?.elementType ?: 3,
+                        minutes = pg?.minutes ?: 0,
+                        points = (pg?.totalPoints ?: 0) + bonus,
+                        done = pl?.let { clubDone(it.clubId) } ?: gw.finished,
+                    )
+                }
                 val lineup = if (tp.isNotEmpty()) {
-                    val liveMap = tp.associate { p ->
-                        val pl = players[p.element]
-                        val pg = playerGws[gw.id to p.element]
-                        val bonus = provBonus[gw.id to p.element]?.points ?: 0
-                        p.element to PlayerLive(
-                            element = p.element,
-                            elementType = pl?.elementType ?: 3,
-                            minutes = pg?.minutes ?: 0,
-                            points = (pg?.totalPoints ?: 0) + bonus,
-                            done = pl?.let { clubDone(it.clubId) } ?: gw.finished,
-                        )
-                    }
                     LiveEngine.resolve(
                         tp.map { PickIn(it.element, it.position, it.multiplier, it.isCaptain, it.isVice) },
-                        row?.chip, liveMap,
+                        row?.chip, tp.associate { it.element to liveOf(it.element) },
                     ).also { lineups[t.entryId] = it }
                 } else null
+
+                // Free Hit: compare with what last week's squad would have scored this week.
+                val prev = picksBy[(gw.id - 1) to t.entryId].orEmpty()
+                if (row?.chip == "freehit" && lineup != null && prev.isNotEmpty()) {
+                    val wouldHave = LiveEngine.resolve(
+                        prev.map {
+                            val mult = when { it.isCaptain -> 2; it.position <= 11 -> 1; else -> 0 }
+                            PickIn(it.element, it.position, mult, it.isCaptain, it.isVice)
+                        },
+                        null, prev.associate { it.element to liveOf(it.element) },
+                    ).points
+                    freeHits += TransferAnalysis.FreeHit(t.entryId, gw.id, lineup.points, wouldHave)
+                }
 
                 when {
                     row == null && lineup == null -> null
@@ -409,6 +452,21 @@ class Repository(
             }
         }
 
+        // Transfers: raw player points, same gameweek and while the player was kept.
+        val squads = picks.groupBy { it.entryId to it.gw }.mapValues { e -> e.value.map { it.element }.toSet() }
+        val chipOf = teamGws.associate { (it.entryId to it.gw) to it.chip }
+        fun rawPoints(gw: Int, element: Int) =
+            (playerGws[gw to element]?.totalPoints ?: 0) + (provBonus[gw to element]?.points ?: 0)
+        val transferResults = TransferAnalysis.analyze(
+            moves = dao.transfers().filter { it.entryId in teamIds }
+                .map { TransferAnalysis.Move(it.entryId, it.gw, it.elementIn, it.elementOut) },
+            points = ::rawPoints,
+            squad = { e, g -> squads[e to g].orEmpty() },
+            chip = { e, g -> chipOf[e to g] },
+            lastGw = views.lastOrNull()?.gw ?: 0,
+        )
+        val hitByTeamGw = views.flatMap { v -> v.scores.map { (it.entryId to v.gw) to it.transferCost } }.toMap()
+
         LeagueData(
             leagueId = leagueId,
             leagueName = prefs.leagueName,
@@ -427,6 +485,11 @@ class Repository(
             chipWindows = windows,
             chipGrid = grid,
             seasonStats = teamIds.associateWith { SeasonStats.compute(it, allScores, debt) },
+            transfers = transferResults,
+            transferSummary = teamIds.associateWith { id ->
+                TransferAnalysis.summary(id, transferResults, hitByTeamGw.filterKeys { it.first == id }.values.sum(), freeHits)
+            },
+            transferWeeks = TransferAnalysis.weeks(transferResults, hitByTeamGw, freeHits),
             currentGw = currentGw,
             lastSync = prefs.lastSync,
         )

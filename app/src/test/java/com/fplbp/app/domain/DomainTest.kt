@@ -302,6 +302,58 @@ class DomainTest {
         assertTrue(r.text, r.text.contains("Jovan: 4.550 RSD (68%, 13× zadnji)"))
     }
 
+    // ---- Transfers ----
+
+    @Test fun transferAnalysis() {
+        // Team 1: GW3 Wood(20) -> Isak(10), Isak kept GW3-4, sold GW5. GW6 Free Hit (excluded).
+        val pts = mapOf(
+            (3 to 10) to 8, (3 to 20) to 2,
+            (4 to 10) to 2, (4 to 20) to 9,
+            (5 to 10) to 12, (5 to 20) to 1,
+        )
+        val squads = mapOf(
+            3 to setOf(10, 1), 4 to setOf(10, 1), 5 to setOf(30, 1), 6 to setOf(99), 7 to setOf(30, 1),
+        )
+        val chips = mapOf(6 to "freehit")
+        val results = TransferAnalysis.analyze(
+            moves = listOf(
+                TransferAnalysis.Move(1, 3, elementIn = 10, elementOut = 20),
+                TransferAnalysis.Move(1, 6, elementIn = 99, elementOut = 30), // Free Hit move: ignored
+            ),
+            points = { gw, el -> pts[gw to el] ?: 0 },
+            squad = { _, gw -> squads[gw].orEmpty() },
+            chip = { _, gw -> chips[gw] },
+            lastGw = 7,
+        )
+        assertEquals(1, results.size)
+        val r = results[0]
+        assertEquals(6, r.weekDiff)          // 8 - 2 in GW3
+        assertEquals(listOf(3, 4), r.heldGws) // sold before GW5
+        assertEquals(10 - 11, r.heldDiff)     // (8+2) - (2+9)
+        val fh = TransferAnalysis.FreeHit(1, 6, points = 62, wouldHave = 48)
+        val sum = TransferAnalysis.summary(1, results, hits = 4, freeHits = listOf(fh))
+        assertEquals(-1, sum.heldNet)
+        assertEquals(-5, sum.netAfterHits)
+        assertEquals(r, sum.worst)
+        assertNull(sum.best)
+        val weeks = TransferAnalysis.weeks(results, mapOf((1L to 3) to 4), listOf(fh))
+        assertEquals(2, weeks.size)
+        assertEquals(6 - 4, weeks.first { it.gw == 3 }.net)
+        assertEquals(14, weeks.first { it.gw == 6 }.net)
+    }
+
+    @Test fun heldAcrossLaterFreeHit() {
+        // Player kept GW3, team plays Free Hit GW4 (player not in FH squad), player back GW5.
+        val results = TransferAnalysis.analyze(
+            moves = listOf(TransferAnalysis.Move(1, 3, 10, 20)),
+            points = { _, _ -> 1 },
+            squad = { _, gw -> if (gw == 4) setOf(99) else setOf(10) },
+            chip = { _, gw -> if (gw == 4) "freehit" else null },
+            lastGw = 5,
+        )
+        assertEquals(listOf(3, 5), results[0].heldGws)
+    }
+
     @Test fun seasonStats() {
         val gws = listOf(
             GwScores(1, true, listOf(s(1, 40), s(2, 41))),

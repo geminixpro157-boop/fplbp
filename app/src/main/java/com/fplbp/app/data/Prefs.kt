@@ -78,6 +78,10 @@ class Prefs(context: Context) {
         get() = sp.getString("settleWait", "") ?: ""
         set(v) = sp.edit().putString("settleWait", v).apply()
 
+    var lastTransfersFetch: Long
+        get() = sp.getLong("lastTransfersFetch", 0)
+        set(v) = sp.edit().putLong("lastTransfersFetch", v).apply()
+
     var batteryHintDismissed: Boolean
         get() = sp.getBoolean("batteryHintDismissed", false)
         set(v) = sp.edit().putBoolean("batteryHintDismissed", v).apply()

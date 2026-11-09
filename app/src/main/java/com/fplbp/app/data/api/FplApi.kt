@@ -97,6 +97,13 @@ sealed class ApiException(msg: String) : IOException(msg) {
     @SerialName("points_on_bench") val benchPoints: Int = 0,
 )
 
+@Serializable data class TransferDto(
+    @SerialName("element_in") val elementIn: Int,
+    @SerialName("element_out") val elementOut: Int,
+    val event: Int,
+    val time: String = "",
+)
+
 @Serializable data class LiveDto(val elements: List<LiveElement> = emptyList())
 @Serializable data class LiveElement(
     val id: Int,
@@ -153,6 +160,9 @@ class FplApi(private val http: OkHttpClient = defaultClient()) {
     fun history(entry: Long): HistoryDto = get("entry/$entry/history/", HistoryDto.serializer())
 
     fun picks(entry: Long, gw: Int): PicksDto = get("entry/$entry/event/$gw/picks/", PicksDto.serializer())
+
+    fun transfers(entry: Long): List<TransferDto> =
+        get("entry/$entry/transfers/", kotlinx.serialization.builtins.ListSerializer(TransferDto.serializer()))
 
     fun live(gw: Int): LiveDto = get("event/$gw/live/", LiveDto.serializer())
 

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -42,11 +43,48 @@ fun StatsScreen(data: LeagueData, onTeam: (Long) -> Unit) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        item { TotalPoints(data, onTeam) }
         item { Highlights(data, stats) }
         item { BarCard(data, "Puta poslednji", "Uključena deljena dna", stats) { it.timesLast } }
         item { BarCard(data, "Minusi za transfere", "Ukupno bodova izgubljeno na hitove", stats, suffix = { s -> " (${s.hitsCount}×)" }) { it.hitsPoints } }
         item { BarCard(data, "Bodovi ostavljeni na klupi", "Bez kola sa Bench Boost-om", stats) { it.benchPoints } }
         if (data.gws.size >= 2) item { HeatmapCard(data) }
+    }
+}
+
+/** Overall points (net, after hits) from confirmed gameweeks; the current one is added in amber. */
+@Composable
+private fun TotalPoints(data: LeagueData, onTeam: (Long) -> Unit) {
+    val confirmed = data.teams.associate { t ->
+        t.entryId to data.gws.filter { it.isFinal }.sumOf { g -> g.scores.firstOrNull { it.entryId == t.entryId }?.net ?: 0 }
+    }
+    val live = data.liveGw
+    val rows = confirmed.entries.sortedByDescending { it.value }
+    val leader = rows.firstOrNull()?.value ?: 0
+    SectionCard(title = "Ukupni bodovi", subtitle = "Posle minusa za transfere") {
+        rows.forEachIndexed { i, (id, pts) ->
+            val now = live?.scores?.firstOrNull { it.entryId == id }?.net
+            Row(
+                Modifier.fillMaxWidth().clickable { onTeam(id) }.padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("${i + 1}", Modifier.width(24.dp), style = MaterialTheme.typography.bodyMedium, color = App.colors.muted)
+                TeamDot(teamColor(data, id))
+                Spacer(Modifier.width(8.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(data.teamName(id), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (pts < leader) Text("−${leader - pts} od prvog", style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("$pts", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                    if (live != null && now != null) {
+                        Text("+$now u toku → ${pts + now}", style = MaterialTheme.typography.labelSmall, color = App.colors.provisional)
+                    }
+                }
+            }
+            if (i < rows.lastIndex) HorizontalDivider(color = App.colors.grid)
+        }
     }
 }
 
