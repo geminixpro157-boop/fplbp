@@ -5,6 +5,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.fplbp.app.data.GwView
 import com.fplbp.app.data.LeagueData
 import com.fplbp.app.domain.Fmt
 import com.fplbp.app.domain.Insights
@@ -49,38 +52,18 @@ private val posColors = mapOf(
 
 @Composable
 fun CaptainsCard(data: LeagueData) {
-    val gws = finalInsightGws(data)
-    val stats = Insights.captains(gws)
-    val popular = Insights.popularCaptains(gws).take(5)
-    SectionCard(title = "Kapiteni", subtitle = "Završena kola · izgubljeno = da je kapiten bio najbolji igrač u timu") {
-        Row(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
-            Text("Tim", Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
-            Head("Bodovi", 54); Head("Pogodak", 62); Head("Izgubljeno", 72)
-        }
-        HorizontalDivider(color = App.colors.grid)
-        val maxLost = stats.values.maxOfOrNull { it.lost } ?: 0
-        stats.values.sortedBy { it.lost }.forEach { s ->
-            Row(Modifier.fillMaxWidth().padding(vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-                TeamName(data, s.entryId, Modifier.weight(1f))
-                Num("${s.points}", 54)
-                Num("${s.hits}/${s.gameweeks}", 62)
-                Num(if (s.lost > 0) "−${s.lost}" else "0", 72,
-                    if (s.lost == maxLost && maxLost > 0) App.colors.debt else MaterialTheme.colorScheme.onSurface, bold = true)
-            }
-        }
-        if (popular.isNotEmpty()) {
-            Spacer(Modifier.height(10.dp))
-            Text("Najčešći kapiteni u ligi", style = MaterialTheme.typography.labelLarge)
-            popular.forEach { p ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(data.playerName(p.element), style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.width(6.dp))
-                    ClubChip(data.clubShort(p.element), data.players[p.element]?.elementType)
-                    Spacer(Modifier.width(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) { p.teams.sorted().forEach { TeamDot(teamColor(data, it)) } }
-                    Spacer(Modifier.weight(1f))
-                    Text("${p.times}× · prosek ${Fmt.decimal(p.avgRaw, 1)}", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
-                }
+    val popular = Insights.popularCaptains(finalInsightGws(data)).take(8)
+    if (popular.isEmpty()) return
+    SectionCard(title = "Najčešći kapiteni u sezoni", subtitle = "Završena kola · prosek je bez množenja") {
+        popular.forEach { p ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(data.playerName(p.element), style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.width(6.dp))
+                ClubChip(data.clubShort(p.element), data.players[p.element]?.elementType)
+                Spacer(Modifier.width(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) { p.teams.sorted().forEach { TeamDot(teamColor(data, it)) } }
+                Spacer(Modifier.weight(1f))
+                Text("${p.times}× · prosek ${Fmt.decimal(p.avgRaw, 1)}", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
             }
         }
     }
@@ -88,21 +71,16 @@ fun CaptainsCard(data: LeagueData) {
 
 // ------------------------------------------------------------------ 2. ownership grid
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun OwnershipCard(data: LeagueData) {
-    val v = data.liveGw ?: data.gws.lastOrNull() ?: return
+fun OwnershipCard(data: LeagueData, v: GwView) {
     if (v.lineups.size < 2) return
     val rows = Insights.ownership(Insights.Gw(v.gw, v.lineups))
     val teams = data.teams.map { it.entryId }.sorted()
-    SectionCard(title = "Ko koga ima · Kolo ${v.gw}", subtitle = "Igrači koje ima bar dva tima · C kapiten, V vice, ○ klupa") {
-        Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), verticalAlignment = Alignment.Bottom) {
+    SectionCard(title = "Ko koga ima", subtitle = "Igrači koje ima bar dva tima · C kapiten, V vice, ● igra, ○ klupa") {
+        Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Spacer(Modifier.weight(1f))
-            teams.forEach { id ->
-                Column(Modifier.width(40.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    TeamDot(teamColor(data, id))
-                    Text(data.teamName(id).take(3), style = MaterialTheme.typography.labelSmall, color = App.colors.muted, maxLines = 1)
-                }
-            }
+            teams.forEach { id -> Box(Modifier.width(40.dp), contentAlignment = Alignment.Center) { TeamDot(teamColor(data, id)) } }
             Head("Bod.", 40)
         }
         HorizontalDivider(color = App.colors.grid)
@@ -115,6 +93,16 @@ fun OwnershipCard(data: LeagueData) {
                 }
                 teams.forEach { id -> Box(Modifier.width(40.dp), contentAlignment = Alignment.Center) { Mark(o.owners[id], teamColor(data, id)) } }
                 Num("${o.points}", 40)
+            }
+        }
+        HorizontalDivider(Modifier.padding(top = 4.dp, bottom = 8.dp), color = App.colors.grid)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            teams.forEach { id ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TeamDot(teamColor(data, id))
+                    Spacer(Modifier.width(6.dp))
+                    Text(data.teamName(id), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
     }
@@ -144,7 +132,7 @@ private fun Badge(text: String, color: Color) {
 fun OwnPlayersCard(data: LeagueData) {
     val shares = Insights.ownShare(finalInsightGws(data))
     if (shares.isEmpty()) return
-    SectionCard(title = "Svoji igrači", subtitle = "Deo bodova od igrača koje u tom kolu niko drugi u ligi nije imao") {
+    SectionCard(title = "Bodovi od diferencijala", subtitle = "Deo bodova od igrača koje u tom kolu niko drugi u ligi nije imao") {
         shares.values.sortedByDescending { it.share }.forEachIndexed { i, s ->
             Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

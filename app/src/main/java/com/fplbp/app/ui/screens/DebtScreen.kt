@@ -77,7 +77,7 @@ fun DebtScreen(data: LeagueData, onTeam: (Long) -> Unit, onGw: (Int) -> Unit) {
 private fun LastResultCard(data: LeagueData, v: GwView, onGw: (Int) -> Unit) {
     val o = v.outcome ?: return
     val names = o.losers.map { data.teamName(it) }
-    SectionCard(Modifier.clickable { onGw(v.gw) }, title = "Kolo ${v.gw} · završeno", subtitle = "Tapni za detalje kola", accent = true) {
+    SectionCard(Modifier.clickable { onGw(v.gw) }, title = "Kolo ${v.gw} · završeno", subtitle = "Tapni za detalje kola") {
         Text(
             if (o.losers.size == 1) "${names[0]} je platio ${Fmt.rsdShort(o.share)}"
             else "${joinSr(names)} dele po ${Fmt.rsdShort(o.share)}",
@@ -173,7 +173,7 @@ private fun LiveCard(data: LeagueData, v: GwView) {
         }
         append("osveženo ${time(data.lastSync).substringAfter(' ')}")
     }
-    SectionCard(Modifier.clickable { open = !open }, title = title, subtitle = subtitle, accent = true) {
+    SectionCard(Modifier.clickable { open = !open }, title = title, subtitle = subtitle) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusBadge(v.status)
             Spacer(Modifier.width(8.dp))

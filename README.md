@@ -16,8 +16,8 @@ Fokus je na dugu i tekućem kolu. Tri taba:
 | Ekran | Sadržaj |
 |---|---|
 | **Dug** | Tokom kola prvo **Uživo · Kolo X** (tapni: ko je završio, ko igra, ko tek igra i kada), između kola rezultat poslednjeg kola; zatim tabela dugovanja, kasa za večeru i dugovanje kroz sezonu |
-| **Kolo** | Otvara tekuće kolo, strelice za prethodna. Rezultati, transferi tog kola, **Samo kod njega** (igrači koje niko drugi nije imao) i postave; svaki igrač sa ikonama (golovi, asistencije, čista mreža, bonus, odbrane, kartoni), minutama ili vremenom utakmice; tapni igrača za tačne bodove |
-| **Sezona** | **Statistika** (ukupni bodovi, sramota i slava, puta poslednji, hitovi, klupa, plasman po kolu), **Transferi** (koliko su transferi doneli ili odneli: isto kolo i dok je igrač bio u timu, minus hitovi; Free Hit naspram prošlonedeljnog tima), **Igrači** (odakle dolaze bodovi, minusi, top 10, kapiteni, diferencijali), **Čipovi** (po polovinama sezone) |
+| **Kolo** | Otvara tekuće kolo, strelice za prethodna. Rezultati, transferi tog kola, **Ko koga ima** (zajednički igrači), **Diferencijali** (igrači koje niko drugi nije imao) i postave; svaki igrač sa ikonama (golovi, asistencije, čista mreža, bonus, odbrane, kartoni), minutama ili vremenom utakmice; tapni igrača za tačne bodove |
+| **Sezona** | **Statistika** (ukupni bodovi, sramota i slava, puta poslednji, hitovi, klupa, plasman po kolu), **Transferi** (koliko su transferi doneli ili odneli: isto kolo i dok je igrač bio u timu, minus hitovi; Free Hit naspram prošlonedeljnog tima), **Igrači** (cela liga: najčešći kapiteni, bodovi od diferencijala, po poziciji i klubu; po timu: odakle dolaze bodovi, minusi, top 10, kapiteni), **Čipovi** (po polovinama sezone) |
 | **Podešavanja** | ID lige, iznos duga, obaveštenja, ručno osvežavanje, izvoz u JSON |
 
 **Uživo predviđanje:** tokom kola aplikacija sama primenjuje automatske izmene sa klupe, prelazak trake na vice-kapitena i bonus po BPS-u, čim su sigurni, umesto da čeka FPL na kraju kola.

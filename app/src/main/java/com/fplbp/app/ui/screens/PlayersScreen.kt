@@ -164,7 +164,6 @@ private fun androidx.compose.foundation.lazy.LazyListScope.teamView(data: League
 }
 
 private fun androidx.compose.foundation.lazy.LazyListScope.leagueView(data: LeagueData) {
-    item { OwnershipCard(data) }
     item { CaptainsCard(data) }
     item { OwnPlayersCard(data) }
     item { PositionsCard(data) }

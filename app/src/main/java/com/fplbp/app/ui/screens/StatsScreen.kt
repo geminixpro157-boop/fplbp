@@ -141,11 +141,7 @@ private fun FameCard(data: LeagueData, title: String, rows: List<Fame>, accent: 
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
-        Column(
-            Modifier
-                .background(Brush.horizontalGradient(listOf(accent.copy(alpha = 0.16f), accent.copy(alpha = 0.02f))))
-                .padding(16.dp)
-        ) {
+        Column(Modifier.padding(16.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(6.dp))
             rows.forEachIndexed { i, f ->

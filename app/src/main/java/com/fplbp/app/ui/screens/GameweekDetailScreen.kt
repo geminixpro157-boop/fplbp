@@ -62,6 +62,7 @@ fun GameweekDetailScreen(data: LeagueData, gw: Int, onChangeGw: ((Int) -> Unit)?
         item { Header(data, v) }
         val weeks = data.transferWeeks.filter { it.gw == v.gw }
         if (weeks.isNotEmpty()) item { WeekTransfers(data, v, weeks) }
+        if (v.lineups.size >= 2) item { OwnershipCard(data, v) }
         if (v.lineups.size >= 2) item { Differentials(data, v) }
         item { Lineups(data, v) }
     }
@@ -166,7 +167,7 @@ private fun WeekTransfers(data: LeagueData, v: GwView, weeks: List<com.fplbp.app
 @Composable
 private fun Differentials(data: LeagueData, v: GwView) {
     val diffs = remember(v) { Decider.leagueDifferentials(v.lineups) }
-    SectionCard(title = "Samo kod njega", subtitle = "Igrači koje u ovom kolu niko drugi u ligi nije imao. Tapni igrača za bodove.") {
+    SectionCard(title = "Diferencijali", subtitle = "Igrači koje u ovom kolu niko drugi u ligi nije imao. Tapni igrača za bodove.") {
         val order = v.scores.sortedByDescending { it.net }
         order.forEachIndexed { i, s ->
             val list = diffs[s.entryId].orEmpty()
