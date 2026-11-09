@@ -196,7 +196,7 @@ private fun BarCard(
 /** Who sat on this team's bench with points (Bench Boost weeks excluded), shown like the Top 10 list. */
 @Composable
 private fun BenchDetails(data: LeagueData, entryId: Long) {
-    val (rows, worst) = remember(data, entryId) {
+    val (all, worst) = remember(data, entryId) {
         val acc = HashMap<Int, PlayerContribution>()
         var worst: Pair<Int, Int>? = null // gw -> points
         data.gws.forEach { g ->
@@ -205,7 +205,7 @@ private fun BenchDetails(data: LeagueData, entryId: Long) {
             val bench = lu.picks.filter { it.multiplier == 0 && !it.subbedOut }
             val sum = bench.sumOf { it.points }
             if (sum > (worst?.second ?: 0)) worst = g.gw to sum
-            bench.filter { it.points > 0 }.forEach { p ->
+            bench.filter { it.points != 0 }.forEach { p ->
                 val cats = HashMap<String, Int>()
                 val counts = HashMap<String, Int>()
                 var bonus = 0
@@ -227,8 +227,11 @@ private fun BenchDetails(data: LeagueData, entryId: Long) {
                 )
             }
         }
-        acc.values.sortedByDescending { it.total }.take(5) to worst
+        acc.values.sortedByDescending { it.total } to worst
     }
+    // Top 5 with points, then everyone else (incl. minus points) in one line, so it adds up to the bar.
+    val rows = all.filter { it.total > 0 }.take(5)
+    val others = all.filter { it !in rows }
     Column(Modifier.padding(top = 4.dp, bottom = 4.dp)) {
         if (rows.isEmpty()) {
             Text("Niko nije doneo bodove sa klupe.", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
@@ -236,6 +239,15 @@ private fun BenchDetails(data: LeagueData, entryId: Long) {
         }
         val maxTotal = rows.first().total.coerceAtLeast(1)
         rows.forEachIndexed { i, c -> TopPlayer(data, i, c, maxTotal, teamColor(data, entryId)) }
+        if (others.isNotEmpty()) {
+            val n = others.size
+            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("+ $n ${if (n % 10 == 1 && n % 100 != 11) "igrač" else "igrača"}", Modifier.padding(start = 24.dp).weight(1f),
+                    style = MaterialTheme.typography.bodyMedium, color = App.colors.muted)
+                Text("${others.sumOf { it.total }}", Modifier.width(48.dp), textAlign = TextAlign.End,
+                    style = MaterialTheme.typography.bodyLarge, color = App.colors.muted)
+            }
+        }
         worst?.let { (gw, pts) ->
             Text("Najgore: kolo $gw · ${poena(pts)} na klupi", style = MaterialTheme.typography.labelSmall,
                 color = App.colors.muted, modifier = Modifier.padding(start = 24.dp, top = 4.dp))
