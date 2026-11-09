@@ -158,7 +158,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.leagueView(data: Leag
 }
 
 @Composable
-private fun TopPlayer(data: LeagueData, i: Int, c: PlayerContribution, maxTotal: Int, color: Color) {
+fun TopPlayer(data: LeagueData, i: Int, c: PlayerContribution, maxTotal: Int, color: Color) {
     var open by remember(c.element) { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().clickable { open = !open }.padding(vertical = 6.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

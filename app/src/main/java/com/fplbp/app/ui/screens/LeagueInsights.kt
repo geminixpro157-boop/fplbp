@@ -40,7 +40,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.fplbp.app.data.Category
 import com.fplbp.app.data.GwView
+import com.fplbp.app.data.PlayerContribution
 import com.fplbp.app.data.LeagueData
 import com.fplbp.app.domain.Fmt
 import com.fplbp.app.domain.Insights
@@ -70,7 +72,7 @@ fun CaptainsCard(data: LeagueData) {
     val popular = Insights.popularCaptains(finalInsightGws(data)).take(8)
     if (popular.isEmpty()) return
     val teams = data.teams.map { it.entryId }.sorted()
-    SectionCard(title = "Najčešći kapiteni u sezoni", subtitle = "×broj = koliko puta ga je tim izabrao") {
+    SectionCard(title = "Najčešći kapiteni u sezoni", subtitle = "×broj = koliko puta izabran · prosek sa trakom") {
         popular.forEachIndexed { i, p ->
             Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -78,7 +80,7 @@ fun CaptainsCard(data: LeagueData) {
                     Spacer(Modifier.width(6.dp))
                     ClubChip(data.clubShort(p.element), data.players[p.element]?.elementType)
                     Spacer(Modifier.weight(1f))
-                    Text("×${p.times} · prosek ${Fmt.decimal(p.avgRaw, 1)}", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
+                    Text("×${p.times} · prosek ${Fmt.decimal(p.avgWithArmband, 1)} bodova", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
                 }
                 Spacer(Modifier.height(4.dp))
                 // Full team names, so no legend is needed.
@@ -209,43 +211,39 @@ fun OwnPlayersCard(data: LeagueData) {
     }
 }
 
-private class OwnAcc(var pts: Int = 0, var gws: Int = 0, var bonus: Int = 0, val counts: HashMap<String, Int> = HashMap())
-
-/** A team's season differentials: player, club, event counts, gameweeks unique to the team, points. */
+/** A team's season differentials, shown exactly like the Top 10 list (icons, bar, tap for points split). */
 @Composable
 private fun OwnPlayersList(data: LeagueData, entryId: Long) {
     val rows = remember(data, entryId) {
-        val acc = HashMap<Int, OwnAcc>()
+        val acc = HashMap<Int, PlayerContribution>()
         data.gws.filter { it.isFinal && it.lineups.isNotEmpty() }.forEach { v ->
             Decider.leagueDifferentials(v.lineups)[entryId].orEmpty().forEach { p ->
-                val a = acc.getOrPut(p.element) { OwnAcc() }
-                a.pts += p.total
-                a.gws += 1
+                val cats = HashMap<String, Int>()
+                val counts = HashMap<String, Int>()
+                var bonus = 0
                 v.stats[p.element].orEmpty().forEach { st ->
-                    a.counts[st.identifier] = (a.counts[st.identifier] ?: 0) + st.value
-                    if (st.identifier == "bonus") a.bonus += st.points
+                    val c = Category.of(st.identifier)
+                    cats[c] = (cats[c] ?: 0) + st.points * p.multiplier
+                    counts[st.identifier] = (counts[st.identifier] ?: 0) + st.value
+                    if (st.identifier == "bonus") bonus += st.points
                 }
+                val prev = acc[p.element]
+                acc[p.element] = PlayerContribution(
+                    element = p.element,
+                    total = (prev?.total ?: 0) + p.total,
+                    byCategory = (prev?.byCategory.orEmpty().keys + cats.keys).associateWith { (prev?.byCategory?.get(it) ?: 0) + (cats[it] ?: 0) },
+                    captainExtra = (prev?.captainExtra ?: 0) + p.points * (p.multiplier - 1).coerceAtLeast(0),
+                    gwsCounted = (prev?.gwsCounted ?: 0) + 1,
+                    counts = (prev?.counts.orEmpty().keys + counts.keys).associateWith { (prev?.counts?.get(it) ?: 0) + (counts[it] ?: 0) },
+                    bonusRaw = (prev?.bonusRaw ?: 0) + bonus,
+                )
             }
         }
-        acc.entries.sortedByDescending { it.value.pts }
+        acc.values.sortedByDescending { it.total }
     }
-    Column(Modifier.padding(start = 18.dp, bottom = 8.dp)) {
-        rows.forEach { (el, a) ->
-            Column(Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(data.playerName(el), style = MaterialTheme.typography.bodyMedium, maxLines = 1,
-                        overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                    Spacer(Modifier.width(6.dp))
-                    ClubTag(data.clubShort(el), data.players[el]?.elementType)
-                    Spacer(Modifier.weight(1f))
-                    Text("${a.pts}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                }
-                Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-                    StatCounts(a.counts, a.bonus, Modifier.weight(1f))
-                    Text("×${a.gws} kola", style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
-                }
-            }
-        }
+    val maxTotal = rows.firstOrNull()?.total?.coerceAtLeast(1) ?: 1
+    Column(Modifier.padding(top = 4.dp, bottom = 8.dp)) {
+        rows.forEachIndexed { i, c -> TopPlayer(data, i, c, maxTotal, teamColor(data, entryId)) }
     }
 }
 

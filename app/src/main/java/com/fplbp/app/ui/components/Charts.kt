@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -364,49 +365,63 @@ fun ColumnChart(
  * Team x GW grid of finishing positions. Last place is the strongest color.
  * Every cell carries its number, so color is never the only cue.
  */
+/**
+ * Team rows of finishing positions per gameweek. Each team's full name sits above its row.
+ * Up to [FIT] gameweeks the cells stretch to the card width; beyond that the rows scroll
+ * horizontally and open at the latest gameweek.
+ */
 @Composable
 fun PositionHeatmap(rows: List<Pair<String, List<Int?>>>, gws: List<Int>, teamCount: Int, modifier: Modifier = Modifier) {
+    val fits = gws.size <= FIT
+    val scroll = rememberScrollState()
+    LaunchedEffect(gws.size) { if (!fits) scroll.scrollTo(scroll.maxValue) }
+    Column(modifier.fillMaxWidth()) {
+        val content: @Composable () -> Unit = {
+            Column {
+                GwHeader(gws, fits)
+                rows.forEach { (name, ranks) ->
+                    Text(name, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 3.dp))
+                    Row(if (fits) Modifier.fillMaxWidth() else Modifier) {
+                        ranks.forEach { r -> HeatCell(r, teamCount, if (fits) Modifier.weight(1f) else Modifier.width(30.dp)) }
+                    }
+                }
+            }
+        }
+        if (fits) content() else Box(Modifier.horizontalScroll(scroll)) { content() }
+    }
+}
+
+private const val FIT = 12
+
+@Composable
+private fun GwHeader(gws: List<Int>, fits: Boolean) {
+    Row(if (fits) Modifier.fillMaxWidth() else Modifier) {
+        gws.forEach { gw ->
+            Box((if (fits) Modifier.weight(1f) else Modifier.width(30.dp)).height(18.dp), contentAlignment = Alignment.Center) {
+                Text("$gw", style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeatCell(r: Int?, teamCount: Int, modifier: Modifier) {
     val heat = App.colors.heat
     val dark = MaterialTheme.colorScheme.background.red < 0.5f
-    Row(modifier) {
-        Column(Modifier.width(84.dp)) {
-            Spacer(Modifier.height(20.dp))
-            rows.forEach { (name, _) ->
-                Box(Modifier.height(28.dp), contentAlignment = Alignment.CenterStart) {
-                    Text(name, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
-        }
-        Column(Modifier.horizontalScroll(rememberScrollState())) {
-            Row {
-                gws.forEach { gw ->
-                    Box(Modifier.width(28.dp).height(20.dp), contentAlignment = Alignment.Center) {
-                        Text("$gw", style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
-                    }
-                }
-            }
-            rows.forEach { (_, ranks) ->
-                Row {
-                    ranks.forEach { r ->
-                        val idx = if (r == null || teamCount <= 1) 0
-                        else (((r - 1).toFloat() / (teamCount - 1)) * (heat.size - 1)).roundToInt()
-                        val bg = if (r == null) Color.Transparent else heat[idx]
-                        val strong = idx >= heat.size - 2
-                        Box(
-                            Modifier.padding(1.dp).size(26.dp).clip(RoundedCornerShape(4.dp)).background(bg),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                r?.toString() ?: "–",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = if (r == teamCount) FontWeight.Bold else FontWeight.Normal,
-                                color = if (strong && !dark) Color.White else MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
-                    }
-                }
-            }
-        }
+    val idx = if (r == null || teamCount <= 1) 0 else (((r - 1).toFloat() / (teamCount - 1)) * (heat.size - 1)).roundToInt()
+    val strong = idx >= heat.size - 2
+    Box(
+        modifier.padding(1.dp).height(28.dp).clip(RoundedCornerShape(4.dp))
+            .background(if (r == null) Color.Transparent else heat[idx]),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            r?.toString() ?: "–",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (r == teamCount) FontWeight.Bold else FontWeight.Normal,
+            color = if (strong && !dark) Color.White else MaterialTheme.colorScheme.onSurface,
+        )
     }
 }
 
