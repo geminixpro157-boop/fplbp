@@ -118,6 +118,26 @@ fun ClubChip(club: String, elementType: Int?) {
     }
 }
 
+/** Compact club tag (code only, position-colored dot) for tight rows. */
+@Composable
+fun ClubTag(club: String, elementType: Int?) {
+    val c = when (elementType) {
+        Pos.GK -> Color(0xFFC98500)
+        Pos.DEF -> Color(0xFF199E70)
+        Pos.MID -> Color(0xFF3987E5)
+        Pos.FWD -> Color(0xFFD55181)
+        else -> App.colors.muted
+    }
+    Row(
+        Modifier.clip(RoundedCornerShape(4.dp)).background(c.copy(alpha = 0.16f)).padding(horizontal = 4.dp, vertical = 1.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(5.dp).clip(RoundedCornerShape(50)).background(c))
+        Spacer(Modifier.width(3.dp))
+        Text(club, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
 @Composable
 fun TeamDot(color: Color) = Box(Modifier.size(10.dp).clip(RoundedCornerShape(3.dp)).background(color))
 

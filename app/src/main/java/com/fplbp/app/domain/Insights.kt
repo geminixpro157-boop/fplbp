@@ -101,17 +101,29 @@ object Insights {
 
     // ---------------------------------------------------------------- ownership
 
-    data class Owned(val element: Int, val owners: Map<Long, Mark>, val points: Int)
+    data class Owned(
+        val element: Int,
+        val owners: Map<Long, Mark>,
+        /** Raw points of the player this gameweek. */
+        val points: Int,
+        /** Points the player actually gave each owning team (with captaincy; 0 from the bench). */
+        val contrib: Map<Long, Int> = emptyMap(),
+    ) {
+        /** Same player, different outcome for the owners (captain vs not, bench vs playing). */
+        val decisive: Boolean get() = contrib.values.distinct().size > 1
+    }
     enum class Mark { CAPTAIN, VICE, PLAYING, BENCH }
 
     /** Players in at least [minOwners] squads this gameweek, most owned first. */
     fun ownership(g: Gw, minOwners: Int = 2, limit: Int = 15): List<Owned> {
         val map = HashMap<Int, HashMap<Long, Mark>>()
         val pts = HashMap<Int, Int>()
+        val contrib = HashMap<Int, HashMap<Long, Int>>()
         for ((team, lu) in g.lineups) {
             val cap = armband(lu)
             lu.picks.forEach { p ->
                 pts[p.element] = p.points
+                contrib.getOrPut(p.element) { HashMap() }[team] = p.total
                 map.getOrPut(p.element) { HashMap() }[team] = when {
                     cap?.element == p.element -> Mark.CAPTAIN
                     p.isVice && p.multiplier > 0 -> Mark.VICE
@@ -121,7 +133,7 @@ object Insights {
             }
         }
         return map.filter { it.value.size >= minOwners }
-            .map { (el, owners) -> Owned(el, owners, pts[el] ?: 0) }
+            .map { (el, owners) -> Owned(el, owners, pts[el] ?: 0, contrib[el].orEmpty()) }
             .sortedWith(compareByDescending<Owned> { it.owners.size }.thenByDescending { it.points })
             .take(limit)
     }

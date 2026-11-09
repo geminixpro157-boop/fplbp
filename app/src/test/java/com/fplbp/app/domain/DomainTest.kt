@@ -379,6 +379,9 @@ class DomainTest {
         assertEquals(listOf(11, 12), owned.map { it.element })
         assertEquals(Insights.Mark.CAPTAIN, owned[0].owners[2L])
         assertEquals(Insights.Mark.BENCH, owned[1].owners[2L])
+        assertEquals(24, owned[0].contrib[2L])   // captained: 12 x 2
+        assertEquals(12, owned[0].contrib[1L])
+        assertTrue(owned[0].decisive)
 
         val byPos = Insights.pointsBy(listOf(g)) { if (it == 10) 4 else 3 }
         assertEquals(4, byPos.getValue(1)[4])

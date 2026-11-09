@@ -34,6 +34,7 @@ import com.fplbp.app.domain.Fmt
 import com.fplbp.app.domain.Insights
 import com.fplbp.app.domain.Pos
 import com.fplbp.app.ui.components.ClubChip
+import com.fplbp.app.ui.components.ClubTag
 import com.fplbp.app.ui.components.SectionCard
 import com.fplbp.app.ui.components.TeamDot
 import com.fplbp.app.ui.components.teamColor
@@ -109,18 +110,35 @@ fun OwnershipCard(data: LeagueData, v: GwView) {
     val teams = data.teams.map { it.entryId }.sorted()
     SectionCard(
         title = "Zajednički igrači",
-        subtitle = "C kapiten · V vice · ○ klupa · desno bodovi",
+        subtitle = "Broj = bodovi za taj tim · zlatno kapiten · ○ klupa",
     ) {
         if (rows.isEmpty()) Text("Nijedan igrač nije zajednički.", style = MaterialTheme.typography.bodySmall, color = App.colors.muted)
+        val gold = App.colors.gold
         rows.forEach { o ->
-            Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 2.dp).clip(RoundedCornerShape(8.dp))
+                    // Rows where the same player gave teams different points are the interesting ones.
+                    .background(if (o.decisive) gold.copy(alpha = 0.10f) else Color.Transparent)
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                     Text(data.playerName(o.element), style = MaterialTheme.typography.bodyMedium, maxLines = 1,
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    Spacer(Modifier.width(5.dp))
+                    ClubTag(data.clubShort(o.element), data.players[o.element]?.elementType)
                 }
-                teams.forEach { id -> Box(Modifier.width(40.dp), contentAlignment = Alignment.Center) { Mark(o.owners[id], teamColor(data, id)) } }
-                Num("${o.points}", 40)
+                teams.forEach { id ->
+                    Box(Modifier.width(36.dp), contentAlignment = Alignment.Center) {
+                        PointsMark(o.owners[id], o.contrib[id] ?: 0, teamColor(data, id))
+                    }
+                }
+                Num("${o.points}", 30, App.colors.muted)
             }
+        }
+        if (rows.any { it.decisive }) {
+            Text("Zlatna pozadina = isti igrač, različiti bodovi", style = MaterialTheme.typography.labelSmall,
+                color = App.colors.muted, modifier = Modifier.padding(top = 6.dp))
         }
         HorizontalDivider(Modifier.padding(top = 4.dp, bottom = 8.dp), color = App.colors.grid)
         TeamLegend(data, teams)
@@ -128,13 +146,20 @@ fun OwnershipCard(data: LeagueData, v: GwView) {
 }
 
 @Composable
-private fun Mark(mark: Insights.Mark?, color: Color) {
+private fun PointsMark(mark: Insights.Mark?, pts: Int, color: Color) {
+    val shape = RoundedCornerShape(50)
     when (mark) {
         null -> Text("–", style = MaterialTheme.typography.labelSmall, color = App.colors.grid)
-        Insights.Mark.CAPTAIN -> Badge("C", App.colors.gold)
-        Insights.Mark.VICE -> Badge("V", color)
-        Insights.Mark.PLAYING -> Box(Modifier.size(12.dp).clip(RoundedCornerShape(50)).background(color))
-        Insights.Mark.BENCH -> Box(Modifier.size(12.dp).clip(RoundedCornerShape(50)).border(1.5.dp, color, RoundedCornerShape(50)))
+        Insights.Mark.BENCH -> Box(Modifier.size(26.dp).clip(shape).border(1.5.dp, color, shape), contentAlignment = Alignment.Center) {
+            Text("–", style = MaterialTheme.typography.labelSmall, color = color)
+        }
+        else -> Box(
+            Modifier.size(26.dp).clip(shape).background(if (mark == Insights.Mark.CAPTAIN) App.colors.gold else color),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("$pts", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.background, maxLines = 1)
+        }
     }
 }
 
