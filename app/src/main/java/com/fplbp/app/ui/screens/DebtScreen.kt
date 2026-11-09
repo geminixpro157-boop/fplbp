@@ -77,7 +77,14 @@ fun DebtScreen(data: LeagueData, onTeam: (Long) -> Unit, onGw: (Int) -> Unit) {
 private fun LastResultCard(data: LeagueData, v: GwView, onGw: (Int) -> Unit) {
     val o = v.outcome ?: return
     // No "X je platio" headline: the red row and the debt table below already say it.
-    SectionCard(Modifier.clickable { onGw(v.gw) }, title = "Kolo ${v.gw} · završeno", subtitle = "Tapni za detalje kola") {
+    SectionCard(Modifier.clickable { onGw(v.gw) }, title = "Kolo ${v.gw}", subtitle = "Tapni za detalje kola") {
+        // Same status line as the Kola page.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            StatusBadge(v.status)
+            Spacer(Modifier.width(8.dp))
+            if (v.fixturesTotal > 0) Text("Utakmice ${v.fixturesDone}/${v.fixturesTotal}", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
+        }
+        Spacer(Modifier.height(8.dp))
         v.scores.sortedByDescending { it.net }.forEach { s ->
             val loser = s.entryId in o.losers
             Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
