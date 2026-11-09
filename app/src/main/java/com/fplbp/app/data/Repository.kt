@@ -177,6 +177,16 @@ class Repository(
             val expected = teams.filter { (firstGw[it.entryId] ?: Int.MAX_VALUE) <= gw.id }.map { it.entryId }.toSet()
             val have = teamGws.filter { it.gw == gw.id }.map { it.entryId }.toSet()
             if (expected.isEmpty() || !have.containsAll(expected)) continue
+            // Safety: FPL's per-team history can still be a stale cache right after confirmation.
+            // Settle only when it matches our live calculation, or after waiting 6 hours.
+            val view = load()?.gws?.firstOrNull { it.gw == gw.id }
+            val matches = view != null && view.verified.size >= expected.size && view.verified.values.all { it }
+            if (!matches) {
+                val waitKey = "${gw.id}:"
+                if (!prefs.settleWait.startsWith(waitKey)) { prefs.settleWait = waitKey + now; continue }
+                val since = prefs.settleWait.removePrefix(waitKey).toLongOrNull() ?: now
+                if (now - since < 6 * 60 * MINUTE) continue
+            }
             db.withTransaction {
                 dao.markTeamGwFinal(gw.id)
                 dao.clearProvisionalBonus(gw.id)
@@ -321,11 +331,16 @@ class Repository(
 
                 when {
                     row == null && lineup == null -> null
-                    status != GwStatus.LIVE && row != null -> {
+                    // Confirmed GW: FPL's official history is the source of truth.
+                    status == GwStatus.FINAL && row != null -> {
                         if (lineup != null) verified[t.entryId] = lineup.points == row.points
                         TeamScore(t.entryId, row.points, row.transferCost, row.benchPoints, row.chip)
                     }
-                    lineup != null -> TeamScore(t.entryId, lineup.points, row?.transferCost ?: 0, lineup.benchPoints, row?.chip)
+                    // Live or waiting for confirmation: FPL's history is cached and lags, so use the live calculation.
+                    lineup != null -> {
+                        if (row != null) verified[t.entryId] = lineup.points == row.points
+                        TeamScore(t.entryId, lineup.points, row?.transferCost ?: 0, lineup.benchPoints, row?.chip)
+                    }
                     else -> TeamScore(t.entryId, row!!.points, row.transferCost, row.benchPoints, row.chip)
                 }
             }

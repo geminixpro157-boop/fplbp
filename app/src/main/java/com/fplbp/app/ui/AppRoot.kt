@@ -78,8 +78,8 @@ import java.util.Locale
 private data class Tab(val route: String, val label: String, @DrawableRes val icon: Int)
 
 private val tabs = listOf(
-    Tab("dug", "Dug", R.drawable.ic_nav_debt),
-    Tab("kolo", "Kolo", R.drawable.ic_nav_rounds),
+    Tab("dug", "Dugovanja", R.drawable.ic_nav_debt),
+    Tab("kolo", "Kola", R.drawable.ic_nav_rounds),
     Tab("sezona", "Sezona", R.drawable.ic_nav_stats),
 )
 

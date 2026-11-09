@@ -73,6 +73,11 @@ class Prefs(context: Context) {
         get() = sp.getString("bottomState", "") ?: ""
         set(v) = sp.edit().putString("bottomState", v).apply()
 
+    /** "gw:time" when settling a GW was first held back because FPL's history didn't match yet. */
+    var settleWait: String
+        get() = sp.getString("settleWait", "") ?: ""
+        set(v) = sp.edit().putString("settleWait", v).apply()
+
     var batteryHintDismissed: Boolean
         get() = sp.getBoolean("batteryHintDismissed", false)
         set(v) = sp.edit().putBoolean("batteryHintDismissed", v).apply()
