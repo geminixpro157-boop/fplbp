@@ -230,24 +230,12 @@ private fun BenchDetails(data: LeagueData, entryId: Long) {
         acc.values.sortedByDescending { it.total } to worst
     }
     // Top 5 with points, then everyone else (incl. minus points) in one line, so it adds up to the bar.
-    val rows = all.filter { it.total > 0 }.take(5)
-    val others = all.filter { it !in rows }
     Column(Modifier.padding(top = 4.dp, bottom = 4.dp)) {
-        if (rows.isEmpty()) {
+        if (all.none { it.total > 0 }) {
             Text("Niko nije doneo bodove sa klupe.", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
             return@Column
         }
-        val maxTotal = rows.first().total.coerceAtLeast(1)
-        rows.forEachIndexed { i, c -> TopPlayer(data, i, c, maxTotal, teamColor(data, entryId)) }
-        if (others.isNotEmpty()) {
-            val n = others.size
-            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("+ $n ${if (n % 10 == 1 && n % 100 != 11) "igrač" else "igrača"}", Modifier.padding(start = 24.dp).weight(1f),
-                    style = MaterialTheme.typography.bodyMedium, color = App.colors.muted)
-                Text("${others.sumOf { it.total }}", Modifier.width(48.dp), textAlign = TextAlign.End,
-                    style = MaterialTheme.typography.bodyLarge, color = App.colors.muted)
-            }
-        }
+        TopPlayers(data, all, teamColor(data, entryId))
         worst?.let { (gw, pts) ->
             Text("Najgore: kolo $gw · ${poena(pts)} na klupi", style = MaterialTheme.typography.labelSmall,
                 color = App.colors.muted, modifier = Modifier.padding(start = 24.dp, top = 4.dp))

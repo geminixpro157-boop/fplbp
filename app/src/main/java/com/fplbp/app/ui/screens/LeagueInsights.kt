@@ -241,9 +241,8 @@ private fun OwnPlayersList(data: LeagueData, entryId: Long) {
         }
         acc.values.sortedByDescending { it.total }
     }
-    val maxTotal = rows.firstOrNull()?.total?.coerceAtLeast(1) ?: 1
     Column(Modifier.padding(top = 4.dp, bottom = 8.dp)) {
-        rows.forEachIndexed { i, c -> TopPlayer(data, i, c, maxTotal, teamColor(data, entryId)) }
+        TopPlayers(data, rows, teamColor(data, entryId))
     }
 }
 

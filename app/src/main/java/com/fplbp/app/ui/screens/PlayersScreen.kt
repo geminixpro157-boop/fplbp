@@ -102,10 +102,8 @@ private fun androidx.compose.foundation.lazy.LazyListScope.teamView(data: League
         }
     }
     item {
-        SectionCard(title = "Top 10 igrača", subtitle = "Bodovi koji su ušli u zbir tima") {
-            val maxTotal = list.firstOrNull()?.total?.coerceAtLeast(1) ?: 1
-            val color = teamColor(data, entryId)
-            list.take(10).forEachIndexed { i, c -> TopPlayer(data, i, c, maxTotal, color) }
+        SectionCard(title = "Top 5 igrača", subtitle = "Bodovi koji su ušli u zbir tima") {
+            TopPlayers(data, list, teamColor(data, entryId))
             Spacer(Modifier.height(6.dp))
             Text(
                 "Tapni igrača za raspodelu bodova · kapitenski bodovi su uračunati u zbir",
@@ -208,6 +206,25 @@ private fun SourcesCard(data: LeagueData, entryId: Long, positive: List<Pair<Str
         }
         Spacer(Modifier.height(6.dp))
         Text("± prosek = koliko bodova više ili manje od proseka lige", style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
+    }
+}
+
+/** Top 5 like [TopPlayer], then everyone else in one plain line, so the list adds up to the total. */
+@Composable
+fun TopPlayers(data: LeagueData, all: List<PlayerContribution>, color: Color, top: Int = 5) {
+    val sorted = all.sortedByDescending { it.total }
+    val rows = sorted.take(top)
+    val others = sorted.drop(top)
+    val maxTotal = rows.firstOrNull()?.total?.coerceAtLeast(1) ?: 1
+    rows.forEachIndexed { i, c -> TopPlayer(data, i, c, maxTotal, color) }
+    if (others.isNotEmpty()) {
+        val n = others.size
+        Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("+ $n ${if (n % 10 == 1 && n % 100 != 11) "igrač" else "igrača"}", Modifier.padding(start = 24.dp).weight(1f),
+                style = MaterialTheme.typography.bodyMedium, color = App.colors.muted)
+            Text("${others.sumOf { it.total }}", Modifier.width(48.dp), textAlign = TextAlign.End,
+                style = MaterialTheme.typography.bodyLarge, color = App.colors.muted)
+        }
     }
 }
 
