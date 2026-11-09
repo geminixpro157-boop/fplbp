@@ -164,28 +164,11 @@ private fun androidx.compose.foundation.lazy.LazyListScope.teamView(data: League
 }
 
 private fun androidx.compose.foundation.lazy.LazyListScope.leagueView(data: LeagueData) {
-    // Sum over all teams.
-    val byPlayer = HashMap<Int, MutableList<Pair<Long, PlayerContribution>>>()
-    data.contributions.forEach { (team, list) -> list.forEach { byPlayer.getOrPut(it.element) { mutableListOf() } += team to it } }
-    val differentials = byPlayer.entries.filter { it.value.size == 1 }
-        .map { Triple(it.key, it.value[0].first, it.value[0].second.total) }
-        .sortedByDescending { it.third }.take(8)
-
-    if (differentials.isNotEmpty()) item {
-        SectionCard(title = "Diferencijali", subtitle = "Igrači koje je imao samo jedan tim") {
-            HBarChart(differentials.map { (el, team, pts) ->
-                BarItem(data.playerName(el), pts.toDouble(), teamColor(data, team), "$pts", sub = data.teamName(team))
-            }, labelWidth = 110.dp)
-        }
-    }
-    item {
-        SectionCard(title = "Kapitenski bodovi po timu", subtitle = "Ukupno, sa množenjem") {
-            HBarChart(data.teams.map { t ->
-                val pts = data.captains[t.entryId].orEmpty().sumOf { it.points }
-                BarItem(t.name, pts.toDouble(), teamColor(data, t.entryId), "$pts")
-            }.sortedByDescending { it.value })
-        }
-    }
+    item { OwnershipCard(data) }
+    item { CaptainsCard(data) }
+    item { OwnPlayersCard(data) }
+    item { PositionsCard(data) }
+    item { ClubsCard(data) }
 }
 
 /** Full one-line breakdown, e.g. "G 24 · A 9 · ČM 4 · B 11 · Min 30 · Minusi −3". */

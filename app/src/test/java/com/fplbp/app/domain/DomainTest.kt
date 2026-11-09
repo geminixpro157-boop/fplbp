@@ -354,6 +354,37 @@ class DomainTest {
         assertEquals(listOf(3, 5), results[0].heldGws)
     }
 
+    // ---- League insights ----
+
+    private fun lu(vararg picks: EffectivePick) = LineupResult(picks.toList(), emptyList(), false)
+    private fun cp(e: Int, pts: Int, mult: Int = 1) = EffectivePick(e, e, mult, pts, mult >= 2, false, false, false, false)
+
+    @Test fun insights() {
+        val g = Insights.Gw(1, mapOf(
+            1L to lu(cp(10, 2, 2), cp(11, 12), cp(12, 5)),   // captained 2, best was 12 -> lost 10
+            2L to lu(cp(11, 12, 2), cp(13, 3), cp(12, 5, 0)), // captained the best -> hit; 12 on bench
+        ))
+        val caps = Insights.captains(listOf(g))
+        assertEquals(10, caps.getValue(1).lost)
+        assertEquals(0, caps.getValue(1).hits)
+        assertEquals(1, caps.getValue(2).hits)
+        assertEquals(24, caps.getValue(2).points)
+
+        val own = Insights.ownShare(listOf(g))
+        // Team 1 counts 10 and 12 alone (team 2 has 12 on the bench) -> 4 + 5 = 9 of 2*2+12+5 = 21
+        assertEquals(9, own.getValue(1).own)
+        assertEquals(21, own.getValue(1).total)
+
+        val owned = Insights.ownership(g)
+        assertEquals(listOf(11, 12), owned.map { it.element })
+        assertEquals(Insights.Mark.CAPTAIN, owned[0].owners[2L])
+        assertEquals(Insights.Mark.BENCH, owned[1].owners[2L])
+
+        val byPos = Insights.pointsBy(listOf(g)) { if (it == 10) 4 else 3 }
+        assertEquals(4, byPos.getValue(1)[4])
+        assertEquals(17, byPos.getValue(1)[3])
+    }
+
     @Test fun seasonStats() {
         val gws = listOf(
             GwScores(1, true, listOf(s(1, 40), s(2, 41))),
