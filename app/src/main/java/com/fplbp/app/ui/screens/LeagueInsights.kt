@@ -56,7 +56,7 @@ fun CaptainsCard(data: LeagueData) {
     val popular = Insights.popularCaptains(finalInsightGws(data)).take(8)
     if (popular.isEmpty()) return
     val teams = data.teams.map { it.entryId }.sorted()
-    SectionCard(title = "Najčešći kapiteni u sezoni", subtitle = "Završena kola · broj uz boju = koliko puta ga je tim kapitenirao · prosek bez množenja") {
+    SectionCard(title = "Najčešći kapiteni u sezoni", subtitle = "Završena kola · broj uz boju = koliko puta je izabran za kapitena · prosek bez množenja") {
         popular.forEachIndexed { i, p ->
             Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -172,71 +172,92 @@ fun OwnPlayersCard(data: LeagueData) {
     }
 }
 
-// ------------------------------------------------------------------ 4. positions
+// ------------------------------------------------------------------ 4./5. shaded tables
+
+/**
+ * Teams × columns table of shares (%). Cells are shaded gold by value; the highest
+ * value in each column is bold. [rowLabel] = full team name, or only its color dot (+ legend).
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ShareTable(
+    data: LeagueData,
+    columns: List<String>,
+    values: Map<Long, List<Int>>, // team -> points per column
+    fullNames: Boolean,
+) {
+    val teams = data.teams.map { it.entryId }.sorted()
+    val pctRows = teams.associateWith { id ->
+        val v = values[id].orEmpty()
+        val total = v.sum()
+        columns.indices.map { pct(v.getOrElse(it) { 0 }, total) }
+    }
+    val colMax = columns.indices.map { c -> teams.maxOfOrNull { pctRows.getValue(it)[c] } ?: 0 }
+    val maxAll = colMax.maxOrNull()?.coerceAtLeast(1) ?: 1
+    val gold = App.colors.gold
+    Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Spacer(if (fullNames) Modifier.weight(1f) else Modifier.width(22.dp))
+        columns.forEach { c ->
+            Text(c, Modifier.width(if (fullNames) 50.dp else 42.dp), textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = App.colors.muted, maxLines = 1)
+        }
+        if (!fullNames) Spacer(Modifier.weight(1f))
+    }
+    teams.forEach { id ->
+        Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (fullNames) TeamName(data, id, Modifier.weight(1f))
+            else Box(Modifier.width(22.dp)) { TeamDot(teamColor(data, id)) }
+            pctRows.getValue(id).forEachIndexed { c, p ->
+                val best = p == colMax[c] && p > 0
+                Box(
+                    Modifier.width(if (fullNames) 50.dp else 42.dp).height(30.dp).padding(1.dp)
+                        .clip(RoundedCornerShape(5.dp))
+                        .background(gold.copy(alpha = 0.06f + 0.5f * p / maxAll)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("$p%", style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (best) FontWeight.Bold else FontWeight.Normal,
+                        color = MaterialTheme.colorScheme.onSurface)
+                }
+            }
+            if (!fullNames) Spacer(Modifier.weight(1f))
+        }
+    }
+    if (!fullNames) {
+        HorizontalDivider(Modifier.padding(top = 8.dp, bottom = 8.dp), color = App.colors.grid)
+        TeamLegend(data, teams)
+    }
+}
 
 @Composable
 fun PositionsCard(data: LeagueData) {
     val byPos = Insights.pointsBy(finalInsightGws(data)) { data.players[it]?.elementType }
     if (byPos.isEmpty()) return
     val order = listOf(Pos.GK, Pos.DEF, Pos.MID, Pos.FWD)
-    SectionCard(title = "Bodovi po poziciji", subtitle = "Završena kola, sa kapitenskim množenjem") {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 8.dp)) {
-            order.forEach { p ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(10.dp).clip(RoundedCornerShape(3.dp)).background(posColors.getValue(p)))
-                    Spacer(Modifier.width(4.dp))
-                    Text(Pos.short(p), style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
-                }
-            }
-        }
-        data.teams.sortedBy { it.entryId }.forEach { t ->
-            val m = byPos[t.entryId].orEmpty()
-            val total = m.values.sum()
-            Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-                TeamName(data, t.entryId, Modifier)
-                Spacer(Modifier.height(4.dp))
-                SplitBar(order.map { (m[it] ?: 0) to posColors.getValue(it) })
-                Text(
-                    order.joinToString(" · ") { "${Pos.short(it)} ${pct(m[it] ?: 0, total)}%" },
-                    style = MaterialTheme.typography.labelSmall, color = App.colors.muted, modifier = Modifier.padding(top = 3.dp),
-                )
-            }
-        }
+    SectionCard(title = "Bodovi po poziciji", subtitle = "Udeo bodova po poziciji · najveći u koloni podebljan · završena kola, sa kapitenom") {
+        ShareTable(
+            data = data,
+            columns = order.map { Pos.short(it) },
+            values = byPos.mapValues { (_, m) -> order.map { m[it] ?: 0 } },
+            fullNames = true,
+        )
     }
 }
-
-// ------------------------------------------------------------------ 5. clubs
 
 @Composable
 fun ClubsCard(data: LeagueData) {
     val byClub = Insights.pointsBy(finalInsightGws(data)) { data.players[it]?.clubId }
     if (byClub.isEmpty()) return
-    SectionCard(title = "Bodovi po klubu", subtitle = "Pet klubova od kojih je tim dobio najviše bodova, ostalo zajedno") {
-        data.teams.sortedBy { it.entryId }.forEachIndexed { i, t ->
-            val m = byClub[t.entryId].orEmpty()
-            val total = m.values.sum()
-            val sorted = m.entries.sortedByDescending { it.value }
-            val rest = sorted.drop(5).sumOf { it.value }
-            val top: List<Pair<String, Int>> = sorted.take(5).map { (data.clubs[it.key]?.shortName ?: "?") to it.value } +
-                listOfNotNull(if (rest > 0) "Ostalo" to rest else null)
-            Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                TeamName(data, t.entryId, Modifier)
-                top.forEach { (club, pts) ->
-                    Row(Modifier.padding(start = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(club, Modifier.width(56.dp), style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold, color = App.colors.muted)
-                        Box(Modifier.weight(1f)) {
-                            Box(Modifier.fillMaxWidth((pts.toFloat() / total.coerceAtLeast(1)).coerceIn(0.02f, 1f)).height(8.dp)
-                                .clip(RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
-                                .background(if (club == "Ostalo") App.colors.muted.copy(alpha = 0.5f) else teamColor(data, t.entryId)))
-                        }
-                        Text("${pct(pts, total)}%", Modifier.width(48.dp), textAlign = TextAlign.End,
-                            style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            }
-            if (i < data.teams.lastIndex) HorizontalDivider(color = App.colors.grid)
-        }
+    // Same columns for every team: the 5 clubs with the most points across the league, then the rest.
+    val top = byClub.values.flatMap { it.entries }.groupBy({ it.key }, { it.value })
+        .mapValues { it.value.sum() }.entries.sortedByDescending { it.value }.take(5).map { it.key }
+    SectionCard(title = "Bodovi po klubu", subtitle = "Pet klubova sa najviše bodova u ligi, ostalo zajedno · najveći u koloni podebljan") {
+        ShareTable(
+            data = data,
+            columns = top.map { data.clubs[it]?.shortName ?: "?" } + "Ost.",
+            values = byClub.mapValues { (_, m) -> top.map { m[it] ?: 0 } + (m.values.sum() - top.sumOf { m[it] ?: 0 }) },
+            fullNames = false,
+        )
     }
 }
 

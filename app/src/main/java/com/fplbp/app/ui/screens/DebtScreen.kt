@@ -113,7 +113,7 @@ fun debtColor(total: Rational, max: Rational): Color = when {
 @Composable
 private fun PotCard(data: LeagueData) {
     SectionCard {
-        Text("Ukupno u kasi za večeru", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
+        Text("Ukupno u kasi", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
         Text(Fmt.rsd(data.pot), style = MaterialTheme.typography.headlineMedium, color = App.colors.gold)
         Text(
             "${data.finalCount} završenih kola × ${Fmt.rsd(data.debt)}",
@@ -173,7 +173,8 @@ private fun LiveCard(data: LeagueData, v: GwView) {
         }
         append("osveženo ${time(data.lastSync).substringAfter(' ')}")
     }
-    SectionCard(Modifier.clickable { open = !open }, title = title, subtitle = subtitle) {
+    val expandable = v.status == GwStatus.LIVE // details only matter while matches are on
+    SectionCard(Modifier.clickable(enabled = expandable) { open = !open }, title = title, subtitle = subtitle) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusBadge(v.status)
             Spacer(Modifier.width(8.dp))
@@ -181,7 +182,7 @@ private fun LiveCard(data: LeagueData, v: GwView) {
                 if (v.status == GwStatus.AWAITING) "Dug se upisuje kad FPL potvrdi bodove" else "Uključeni predviđeni bonus i izmene",
                 style = MaterialTheme.typography.labelSmall, color = App.colors.muted, modifier = Modifier.weight(1f),
             )
-            Icon(
+            if (expandable) Icon(
                 if (open) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                 contentDescription = if (open) "Sakrij detalje" else "Prikaži detalje", tint = App.colors.muted,
             )
