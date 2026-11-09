@@ -229,10 +229,11 @@ object BanterEngine {
 
     // ---------- Change at the bottom ----------
 
-    fun bottomChange(gw: Int, newLast: String, newNet: Int, escaped: List<String>, gap: Int?): Banter {
+    fun bottomChange(gw: Int, newLast: String, newNet: Int, escaped: List<String>, gap: Int?, after: String? = null): Banter {
         val esc = if (escaped.isEmpty()) "" else " ${joinSr(escaped)} ${if (escaped.size > 1) "su se izvukli" else "se izvukao"}."
         val tail = gap?.let { " ${poena(it)} do spasa." } ?: ""
-        return Banter("Kolo $gw · preokret", "$newLast je sada poslednji sa ${poena(newNet)}.$esc$tail", 5)
+        val lead = after?.let { "Posle $it: " } ?: ""
+        return Banter("Kolo $gw · preokret", "$lead$newLast je sada poslednji sa ${poena(newNet)}.$esc$tail", 5)
     }
 
     // ---------- Gameweek settled ----------

@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -25,6 +26,8 @@ private val sections = listOf("Statistika", "Transferi", "Timovi", "Čipovi")
 @Composable
 fun SeasonScreen(data: LeagueData, onTeam: (Long) -> Unit) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    // Team shown in Transferi; the hits card on Statistika jumps there with a team preselected.
+    var transferTeam by rememberSaveable { mutableLongStateOf(data.teams.firstOrNull()?.entryId ?: 0L) }
     Column(Modifier.fillMaxSize()) {
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp)) {
             sections.forEachIndexed { i, label ->
@@ -38,8 +41,8 @@ fun SeasonScreen(data: LeagueData, onTeam: (Long) -> Unit) {
         }
         Box(Modifier.weight(1f)) {
             when (tab) {
-                0 -> StatsScreen(data, onTeam)
-                1 -> TransfersScreen(data)
+                0 -> StatsScreen(data, onTeam, onHits = { transferTeam = it; tab = 1 })
+                1 -> TransfersScreen(data, transferTeam) { transferTeam = it }
                 2 -> PlayersScreen(data)
                 else -> ChipsScreen(data)
             }

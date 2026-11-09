@@ -31,11 +31,12 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 /**
- * Decides which banter to send. At most 3 notifications per day (the settlement and the
- * season recaps are always sent). Nothing interesting -> nothing sent.
+ * Decides which banter to send. At most 3 notifications per day (the settlement, the
+ * season recaps and bottom changes have their own rules). Nothing interesting -> nothing sent.
+ * Quiet from 00 to 08 h (late PL matches end around midnight CET).
  *
  * Per gameweek: deadline digest; during matches: "one match left" when the bottom is tight,
- * a change at the bottom (max once a day), a summary after each matchday; the settlement.
+ * a change at the bottom (checked at full time, max 3 a day), a summary after each matchday; the settlement.
  */
 class Notifier(private val context: Context, private val db: AppDatabase, private val prefs: Prefs) {
 
@@ -152,27 +153,39 @@ class Notifier(private val context: Context, private val db: AppDatabase, privat
         if (post(b, 3500 + live.gw)) log(key)
     }
 
-    /** The team at the bottom changed during today's matches. At most once a day. */
+    /**
+     * The team at the bottom changed. Checked only when a match ends (not mid-match, so goals
+     * and bonus swings don't flip-flop), at most [FLIPS_PER_DAY] a day, outside the general cap.
+     * During quiet hours the checkpoint is kept, so a late change is sent in the morning if it still holds.
+     */
     private suspend fun bottomChange(data: LeagueData, live: GwView, silent: Boolean) {
         val o = live.outcome ?: return
         val ids = o.losers.sorted()
-        val state = "${live.gw}:${ids.joinToString(",")}"
-        val previous = prefs.bottomState
+        val done = live.fixtures.filter { it.finished || it.finishedProvisional }
+        val state = "${live.gw}:${done.size}:${ids.joinToString(",")}"
+        val previous = prefs.bottomState.split(':')
+        val sameGw = previous.size == 3 && previous[0] == "${live.gw}"
+        if (!sameGw || silent) { prefs.bottomState = state; return }
+        if (done.size <= (previous[1].toIntOrNull() ?: 0)) return // no match ended since the last checkpoint
+        if (quietHours()) return // keep the old checkpoint; re-check in the morning
         prefs.bottomState = state
-        if (silent || !prefs.notifMatchday || quietHours()) return
-        if (!previous.startsWith("${live.gw}:") || previous == state || ids.size != 1) return
-        val prevIds = previous.substringAfter(':').split(',').mapNotNull { it.toLongOrNull() }
-        if (prevIds.isEmpty()) return
+        val prevIds = previous[2].split(',').mapNotNull { it.toLongOrNull() }
+        if (!prefs.notifMatchday || prevIds.isEmpty() || prevIds == ids || ids.size != 1) return
+        // The day's last match: the matchday summary right after covers it.
         val today = LocalDate.now(zone)
-        if (live.fixtures.none { it.started && it.kickoff != null && day(it) == today }) return
-        val key = "flip-${live.gw}-$today"
-        if (dao.notifSent(key) > 0) return
+        val days = live.fixtures.filter { it.kickoff != null }.groupBy { day(it) }
+        val todays = days[today].orEmpty()
+        if (todays.isNotEmpty() && todays.all { it.finished || it.finishedProvisional } && today != days.keys.maxOrNull()) return
+        val sentToday = (1..FLIPS_PER_DAY).count { dao.notifSent("flip-${live.gw}-$today-$it") > 0 }
+        if (sentToday >= FLIPS_PER_DAY) return
+        val last = done.maxByOrNull { it.kickoff ?: 0L }
+        val label = last?.let { "${data.clubs[it.teamH]?.shortName ?: "?"}–${data.clubs[it.teamA]?.shortName ?: "?"}" }
         val names = names(data)
         val b = BanterEngine.bottomChange(
             live.gw, names[ids[0]] ?: "?", o.lowestNet,
-            prevIds.filter { it !in ids }.map { names[it] ?: "?" }, o.gapToSafety,
+            prevIds.filter { it !in ids }.map { names[it] ?: "?" }, o.gapToSafety, label,
         )
-        if (post(b, 3200 + live.gw)) log(key)
+        if (post(b, 5000 + live.gw * 10 + sentToday, force = true, countsToCap = false)) log("flip-${live.gw}-$today-${sentToday + 1}")
     }
 
     /** Each team's live state: net points, captain, and counting players still to play. */
@@ -242,7 +255,7 @@ class Notifier(private val context: Context, private val db: AppDatabase, privat
 
     private fun quietHours(): Boolean {
         val h = java.time.LocalTime.now(zone).hour
-        return h >= 23 || h < 8
+        return h < 8
     }
 
     private suspend fun log(key: String) = dao.logNotif(NotifLogEntity(key, System.currentTimeMillis()))
@@ -255,7 +268,7 @@ class Notifier(private val context: Context, private val db: AppDatabase, privat
     }
 
     /** Sends unless today's cap is used up ([force] for the settlement and recaps). Returns true if sent. */
-    private fun post(b: Banter, id: Int, force: Boolean = false): Boolean {
+    private fun post(b: Banter, id: Int, force: Boolean = false, countsToCap: Boolean = true): Boolean {
         if (!force && capLeft() <= 0) return false
         if (Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -274,8 +287,7 @@ class Notifier(private val context: Context, private val db: AppDatabase, privat
             .build()
         return try {
             NotificationManagerCompat.from(context).notify(id, n)
-            capLeft()
-            prefs.notifCount = prefs.notifCount + 1
+            if (countsToCap) { capLeft(); prefs.notifCount = prefs.notifCount + 1 }
             true
         } catch (_: SecurityException) { false }
     }
@@ -284,6 +296,7 @@ class Notifier(private val context: Context, private val db: AppDatabase, privat
         const val CHANNEL = "liga"
         const val LAST_GW = 38
         const val MAX_PER_DAY = 3
+        const val FLIPS_PER_DAY = 3
 
         fun createChannel(context: Context) {
             val ch = NotificationChannel(CHANNEL, "Liga i dug", NotificationManager.IMPORTANCE_DEFAULT).apply {

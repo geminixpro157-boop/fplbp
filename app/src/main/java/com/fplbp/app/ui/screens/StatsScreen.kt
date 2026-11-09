@@ -44,7 +44,7 @@ import com.fplbp.app.ui.components.teamColor
 import com.fplbp.app.ui.theme.App
 
 @Composable
-fun StatsScreen(data: LeagueData, onTeam: (Long) -> Unit) {
+fun StatsScreen(data: LeagueData, onTeam: (Long) -> Unit, onHits: (Long) -> Unit = {}) {
     val stats = data.seasonStats.values.toList()
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -53,8 +53,14 @@ fun StatsScreen(data: LeagueData, onTeam: (Long) -> Unit) {
     ) {
         item { TotalPoints(data, onTeam) }
         item { Highlights(data, stats) }
-        item { BarCard(data, "Minusi za transfere", "Ukupno bodova izgubljeno na hitove", stats, suffix = { s -> " (×${s.hitsCount})" }) { it.hitsPoints } }
-        item { BarCard(data, "Bodovi ostavljeni na klupi", "Bez kola sa Bench Boost-om", stats) { it.benchPoints } }
+        item {
+            BarCard(data, "Minusi za transfere", "Ukupno bodova izgubljeno na hitove · tapni tim za transfere", stats,
+                suffix = { s -> " (×${s.hitsCount})" }, onTap = onHits) { it.hitsPoints }
+        }
+        item {
+            BarCard(data, "Bodovi ostavljeni na klupi", "Bez kola sa Bench Boost-om · tapni tim za igrače", stats,
+                details = { id -> BenchDetails(data, id) }) { it.benchPoints }
+        }
         if (data.gws.size >= 2) item { HeatmapCard(data) }
     }
 }
@@ -170,12 +176,56 @@ private fun FameCard(data: LeagueData, title: String, rows: List<Fame>, accent: 
 private fun BarCard(
     data: LeagueData, title: String, subtitle: String, stats: List<TeamSeasonStats>,
     suffix: (TeamSeasonStats) -> String = { "" },
+    onTap: ((Long) -> Unit)? = null,
+    details: (@Composable (Long) -> Unit)? = null,
     value: (TeamSeasonStats) -> Int,
 ) {
+    val sorted = stats.sortedByDescending(value)
     SectionCard(title = title, subtitle = subtitle) {
-        HBarChart(stats.sortedByDescending(value).map { s ->
-            BarItem(data.teamName(s.entryId), value(s).toDouble(), teamColor(data, s.entryId), "${value(s)}${suffix(s)}")
-        })
+        HBarChart(
+            sorted.map { s -> BarItem(data.teamName(s.entryId), value(s).toDouble(), teamColor(data, s.entryId), "${value(s)}${suffix(s)}") },
+            onTap = onTap?.let { f -> { i: Int -> f(sorted[i].entryId) } },
+            details = details?.let { d -> @Composable { i: Int -> d(sorted[i].entryId) } },
+        )
+    }
+}
+
+/** Who sat on this team's bench with the most points (Bench Boost weeks excluded), and the worst week. */
+@Composable
+private fun BenchDetails(data: LeagueData, entryId: Long) {
+    val byPlayer = HashMap<Int, Pair<Int, Int>>() // element -> (points, times)
+    var worst: Pair<Int, Int>? = null // gw -> points
+    data.gws.forEach { g ->
+        if (g.scores.firstOrNull { it.entryId == entryId }?.chip == "bboost") return@forEach
+        val lu = g.lineups[entryId] ?: return@forEach
+        val bench = lu.picks.filter { it.multiplier == 0 && !it.subbedOut }
+        val sum = bench.sumOf { it.points }
+        if (sum > (worst?.second ?: 0)) worst = g.gw to sum
+        bench.filter { it.points > 0 }.forEach { p ->
+            val (pts, n) = byPlayer[p.element] ?: (0 to 0)
+            byPlayer[p.element] = (pts + p.points) to (n + 1)
+        }
+    }
+    val top = byPlayer.entries.sortedByDescending { it.value.first }.take(5)
+    Column(Modifier.padding(start = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (top.isEmpty()) {
+            Text("Niko nije doneo bodove sa klupe.", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
+            return@Column
+        }
+        top.forEach { (element, v) ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(data.playerName(element), Modifier.weight(1f), style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("×${v.second}", Modifier.width(36.dp), textAlign = TextAlign.End, style = MaterialTheme.typography.labelMedium,
+                    color = App.colors.muted)
+                Text("${v.first}", Modifier.width(36.dp), textAlign = TextAlign.End, style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold)
+            }
+        }
+        worst?.let { (gw, pts) ->
+            Text("Najgore: kolo $gw · ${poena(pts)} na klupi", style = MaterialTheme.typography.labelSmall,
+                color = App.colors.muted, modifier = Modifier.padding(top = 2.dp))
+        }
     }
 }
 

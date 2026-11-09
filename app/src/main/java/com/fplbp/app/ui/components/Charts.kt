@@ -1,6 +1,13 @@
 package com.fplbp.app.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -236,13 +243,29 @@ private fun Tooltip(title: String, rows: List<Triple<String, Color, String>>, al
 
 data class BarItem(val label: String, val value: Double, val color: Color, val valueText: String, val sub: String? = null)
 
-/** Horizontal bars — labels on the left, value at the end of each bar. */
+/**
+ * Horizontal bars — labels on the left, value at the end of each bar.
+ * [onTap] makes rows tappable; [details] instead toggles that content open below the row.
+ */
 @Composable
-fun HBarChart(items: List<BarItem>, modifier: Modifier = Modifier, labelWidth: Dp = 96.dp) {
+fun HBarChart(
+    items: List<BarItem>,
+    modifier: Modifier = Modifier,
+    labelWidth: Dp = 96.dp,
+    onTap: ((Int) -> Unit)? = null,
+    details: (@Composable (Int) -> Unit)? = null,
+) {
     val maxV = items.maxOfOrNull { abs(it.value) }?.takeIf { it > 0 } ?: 1.0
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        items.forEach { item ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(if (details != null || onTap != null) 2.dp else 8.dp)) {
+        items.forEachIndexed { i, item ->
+            var open by remember(item.label) { mutableStateOf(false) }
+            val tappable = details != null || onTap != null
+            Row(
+                Modifier.fillMaxWidth()
+                    .then(if (tappable) Modifier.clickable { if (details != null) open = !open else onTap?.invoke(i) } else Modifier)
+                    .padding(vertical = if (tappable) 4.dp else 0.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Column(Modifier.width(labelWidth)) {
                     Text(item.label, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     item.sub?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = App.colors.muted, maxLines = 1) }
@@ -267,7 +290,15 @@ fun HBarChart(items: List<BarItem>, modifier: Modifier = Modifier, labelWidth: D
                         maxLines = 1,
                     )
                 }
+                when {
+                    details != null -> Icon(
+                        if (open) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = if (open) "Sakrij" else "Prikaži", tint = App.colors.muted,
+                    )
+                    onTap != null -> Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Otvori", tint = App.colors.muted)
+                }
             }
+            if (details != null) AnimatedVisibility(open) { Box(Modifier.padding(top = 2.dp, bottom = 8.dp)) { details(i) } }
         }
     }
 }

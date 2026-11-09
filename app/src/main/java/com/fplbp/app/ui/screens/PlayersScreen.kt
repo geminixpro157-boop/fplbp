@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
@@ -47,8 +49,6 @@ import com.fplbp.app.ui.components.EmptyState
 import com.fplbp.app.ui.components.HBarChart
 import com.fplbp.app.ui.components.SectionCard
 import com.fplbp.app.ui.components.ClubChip
-import com.fplbp.app.ui.components.DonutChart
-import com.fplbp.app.ui.components.Slice
 import com.fplbp.app.ui.components.StatTile
 import com.fplbp.app.ui.components.teamColor
 import com.fplbp.app.ui.theme.App
@@ -93,15 +93,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.teamView(data: League
     val positive = Category.POSITIVE.map { it to (totals[it] ?: 0) }.filter { it.second > 0 }.sortedByDescending { it.second }
     val minus = Category.MINUS.map { it to (totals[it] ?: 0) }.filter { it.second != 0 }.sortedBy { it.second }
 
-    item {
-        SectionCard(title = "Odakle dolaze bodovi", subtitle = "Ceo tim, sa kapitenskim množenjem") {
-            val top = positive.take(5)
-            val rest = positive.drop(5).sumOf { it.second }
-            val slices = top.map { (cat, v) -> Slice(Category.label(cat), v, categoryColor(cat)) } +
-                listOfNotNull(if (rest > 0) Slice("Ostalo", rest, App.colors.muted) else null)
-            DonutChart(slices, centerValue = "${positive.sumOf { it.second }}", centerLabel = "bodova")
-        }
-    }
+    item { SourcesCard(data, entryId, positive) }
     if (minus.isNotEmpty()) item {
         SectionCard(title = "Minusi", subtitle = "Izgubljeni bodovi (ukupno ${minus.sumOf { it.second }})") {
             HBarChart(minus.map { (cat, v) ->
@@ -155,6 +147,65 @@ private fun androidx.compose.foundation.lazy.LazyListScope.leagueView(data: Leag
     item { OwnPlayersCard(data) }
     item { PositionsCard(data) }
     item { ClubsCard(data) }
+}
+
+private data class Src(val label: String, val value: Int, val color: Color, val diff: Int)
+
+private fun categoryTotals(data: LeagueData, entryId: Long): Map<String, Int> {
+    val totals = HashMap<String, Int>()
+    data.contributions[entryId].orEmpty().forEach { c -> c.byCategory.forEach { (k, v) -> totals[k] = (totals[k] ?: 0) + v } }
+    return totals
+}
+
+/**
+ * Where the points come from: one stacked bar plus a legend with the difference to the
+ * league average per category (shares alone are about the same for every team).
+ */
+@Composable
+private fun SourcesCard(data: LeagueData, entryId: Long, positive: List<Pair<String, Int>>) {
+    val total = positive.sumOf { it.second }.coerceAtLeast(1)
+    val teams = data.teams.map { it.entryId }
+    val all = teams.associateWith { categoryTotals(data, it) }
+    fun avg(cats: Collection<String>): Int =
+        if (teams.isEmpty()) 0 else Math.round(teams.sumOf { t -> cats.sumOf { all[t]?.get(it) ?: 0 } }.toDouble() / teams.size).toInt()
+    val top = positive.take(5)
+    val restCats = Category.POSITIVE.filter { c -> top.none { it.first == c } }
+    val rest = positive.drop(5).sumOf { it.second }
+    val rows = top.map { (cat, v) -> Src(Category.label(cat), v, categoryColor(cat), v - avg(listOf(cat))) } +
+        listOfNotNull(if (rest > 0) Src("Ostalo", rest, App.colors.muted, rest - avg(restCats)) else null)
+
+    SectionCard(title = "Odakle dolaze bodovi", subtitle = "Ukupno ${positive.sumOf { it.second }} · sa kapitenskim množenjem") {
+        Row(Modifier.fillMaxWidth().height(12.dp).clip(RoundedCornerShape(6.dp))) {
+            rows.forEach { r ->
+                if (r.value > 0) Box(Modifier.weight(r.value.toFloat()).fillMaxHeight().background(r.color))
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth().padding(bottom = 2.dp)) {
+            Spacer(Modifier.weight(1f))
+            listOf("bodovi" to 56, "udeo" to 44, "vs liga" to 60).forEach { (h, w) ->
+                Text(h, Modifier.width(w.dp), textAlign = TextAlign.End, style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
+            }
+        }
+        rows.forEach { r ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(10.dp).clip(RoundedCornerShape(3.dp)).background(r.color))
+                Spacer(Modifier.width(10.dp))
+                Text(r.label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("${r.value}", Modifier.width(56.dp), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                Text("${Math.round(r.value * 100.0 / total)}%", Modifier.width(44.dp), textAlign = TextAlign.End,
+                    style = MaterialTheme.typography.bodySmall, color = App.colors.muted)
+                Text(
+                    if (r.diff > 0) "+${r.diff}" else if (r.diff < 0) "−${-r.diff}" else "0",
+                    Modifier.width(60.dp), textAlign = TextAlign.End, style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = when { r.diff > 0 -> App.colors.safe; r.diff < 0 -> App.colors.debt; else -> App.colors.muted },
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text("vs liga = razlika od proseka svih timova", style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
+    }
 }
 
 @Composable
