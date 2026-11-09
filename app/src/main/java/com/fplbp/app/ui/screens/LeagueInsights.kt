@@ -66,7 +66,7 @@ fun CaptainsCard(data: LeagueData) {
                     Spacer(Modifier.width(6.dp))
                     ClubChip(data.clubShort(p.element), data.players[p.element]?.elementType)
                     Spacer(Modifier.weight(1f))
-                    Text("${p.times}× · prosek ${Fmt.decimal(p.avgRaw, 1)}", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
+                    Text("×${p.times} · prosek ${Fmt.decimal(p.avgRaw, 1)}", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
                 }
                 Spacer(Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

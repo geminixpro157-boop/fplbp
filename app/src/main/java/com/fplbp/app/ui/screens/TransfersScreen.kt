@@ -270,8 +270,8 @@ fun TransferCard(data: LeagueData, r: TransferAnalysis.Result, held: Boolean, sh
             buildList {
                 when (kept.size) {
                     0 -> add("nije igrao za tim")
-                    1 -> add("1 kolo u timu (K${kept[0]})")
-                    else -> add("${kola(kept.size)} u timu (K${kept.first()}–K${kept.last()})")
+                    1 -> add("1 kolo u timu (kolo ${kept[0]})")
+                    else -> add("${kola(kept.size)} u timu (kola ${kept.first()}–${kept.last()})")
                 }
                 status?.let { add(it) }
                 if (kept.size > 1) add("u kolu ${r.gw}, ${data.playerName(r.elementIn)} ${r.weekIn} a ${data.playerName(r.elementOut)} ${r.weekOut}")

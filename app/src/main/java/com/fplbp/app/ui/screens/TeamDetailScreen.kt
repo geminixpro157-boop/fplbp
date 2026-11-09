@@ -60,7 +60,7 @@ fun TeamDetailScreen(data: LeagueData, entryId: Long, onGw: (Int) -> Unit) {
         }
         if (finals.size >= 2) {
             item {
-                SectionCard(title = "Plasman po kolu", subtitle = "1 = najbolji, ${data.teams.size} = plaća") {
+                SectionCard(title = "Plasman po kolu", subtitle = "Mesto u kolu · 1 najbolji, ${data.teams.size} plaća") {
                     LineChart(
                         xLabels = finals.map { "${it.gw}" },
                         series = listOf(ChartSeries(team.name, color, finals.map { g -> g.outcome?.ranks?.get(entryId)?.toDouble() })),
@@ -97,9 +97,9 @@ fun TeamDetailScreen(data: LeagueData, entryId: Long, onGw: (Int) -> Unit) {
             item {
                 SectionCard(title = "Sitnice") {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        StatTile("Hitovi", "−${s.hitsPoints}", Modifier.weight(1f), sub = "${s.hitsCount} kola")
+                        StatTile("Hitovi", if (s.hitsPoints > 0) "−${s.hitsPoints}" else "0", Modifier.weight(1f), sub = if (s.hitsCount > 0) "×${s.hitsCount}" else "nijedan")
                         StatTile("Klupa", "${s.benchPoints}", Modifier.weight(1f), sub = "izgubljeno")
-                        StatTile("Najduži niz", "${s.longestLosingStreak}", Modifier.weight(1f), sub = "plaćanja zaredom")
+                        StatTile("Niz plaćanja", "${s.longestLosingStreak}", Modifier.weight(1f), sub = "najduži")
                     }
                 }
             }

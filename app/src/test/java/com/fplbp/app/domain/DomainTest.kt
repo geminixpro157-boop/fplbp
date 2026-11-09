@@ -299,7 +299,7 @@ class DomainTest {
             BanterEngine.RecapRow("Marko", Rational.of(2100), 6),
             BanterEngine.RecapRow("Jovan", Rational.of(4550), 13),
         ), Rational.of(6650))
-        assertTrue(r.text, r.text.contains("Jovan: 4.550 RSD (68%, 13× poslednji)"))
+        assertTrue(r.text, r.text.contains("Jovan: 4.550 RSD (68%, poslednji ×13)"))
     }
 
     // ---- Transfers ----

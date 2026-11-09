@@ -75,7 +75,7 @@ fun ChipsScreen(data: LeagueData) {
                     if (i == periods.size - 1) {
                         Spacer(Modifier.height(12.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                            LegendCell("K5", "iskorišćen", used = true)
+                            LegendCell("5", "iskorišćen u kolu 5", used = true)
                             LegendCell("✓", "dostupan", used = false)
                             LegendCell("–", "istekao", used = false, expired = true)
                         }
@@ -135,7 +135,7 @@ private fun Cell(c: ChipCell) {
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                when { used -> "K${c.usedGw}"; c.expired -> "–"; else -> "✓" },
+                when { used -> "${c.usedGw}"; c.expired -> "–"; else -> "✓" },
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,

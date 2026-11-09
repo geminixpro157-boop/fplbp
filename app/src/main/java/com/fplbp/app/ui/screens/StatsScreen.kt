@@ -53,7 +53,7 @@ fun StatsScreen(data: LeagueData, onTeam: (Long) -> Unit) {
     ) {
         item { TotalPoints(data, onTeam) }
         item { Highlights(data, stats) }
-        item { BarCard(data, "Minusi za transfere", "Ukupno bodova izgubljeno na hitove", stats, suffix = { s -> " (${s.hitsCount}×)" }) { it.hitsPoints } }
+        item { BarCard(data, "Minusi za transfere", "Ukupno bodova izgubljeno na hitove", stats, suffix = { s -> " (×${s.hitsCount})" }) { it.hitsPoints } }
         item { BarCard(data, "Bodovi ostavljeni na klupi", "Bez kola sa Bench Boost-om", stats) { it.benchPoints } }
         if (data.gws.size >= 2) item { HeatmapCard(data) }
     }
@@ -103,13 +103,13 @@ private fun Highlights(data: LeagueData, stats: List<TeamSeasonStats>) {
     val shame = buildList {
         stats.maxByOrNull { it.timesLast }?.takeIf { it.timesLast > 0 }?.let { s ->
             val debt = data.debtTable.firstOrNull { it.entryId == s.entryId }?.total
-            add(Fame("💸", "Najčešće na dnu", s.entryId, "${s.timesLast}×", debt?.let { Fmt.rsdShort(it) }))
+            add(Fame("💸", "Najčešće na dnu", s.entryId, "×${s.timesLast}", debt?.let { Fmt.rsdShort(it) }))
         }
         stats.maxByOrNull { it.longestLosingStreak }?.takeIf { it.longestLosingStreak > 1 }?.let {
             add(Fame("🔁", "Najduži niz plaćanja", it.entryId, "${it.longestLosingStreak} kola"))
         }
         stats.mapNotNull { s -> s.worst?.let { s to it } }.minByOrNull { it.second.second }?.let { (s, w) ->
-            add(Fame("🥶", "Najgore kolo", s.entryId, "${w.second}", "K${w.first}"))
+            add(Fame("🥶", "Najgore kolo", s.entryId, "${w.second}", "kolo ${w.first}"))
         }
         stats.maxByOrNull { it.hitsPoints }?.takeIf { it.hitsPoints > 0 }?.let {
             add(Fame("✂️", "Kralj hitova", it.entryId, "−${it.hitsPoints}"))
@@ -120,10 +120,10 @@ private fun Highlights(data: LeagueData, stats: List<TeamSeasonStats>) {
             add(Fame("🛡️", "Najduže bez duga", it.entryId, "${it.currentSafeStreak} kola", "sada"))
         }
         stats.filter { it.closestEscape != null }.minByOrNull { it.closestEscape!!.second }?.let {
-            add(Fame("😅", "Najtesnije spasavanje", it.entryId, poena(it.closestEscape!!.second), "K${it.closestEscape.first}"))
+            add(Fame("😅", "Najtesnije spasavanje", it.entryId, poena(it.closestEscape!!.second), "kolo ${it.closestEscape.first}"))
         }
         stats.mapNotNull { s -> s.best?.let { s to it } }.maxByOrNull { it.second.second }?.let { (s, b) ->
-            add(Fame("🚀", "Najbolje kolo", s.entryId, "${b.second}", "K${b.first}"))
+            add(Fame("🚀", "Najbolje kolo", s.entryId, "${b.second}", "kolo ${b.first}"))
         }
     }
     // One lazy-list item holds both cards, so stack them explicitly.
@@ -156,12 +156,7 @@ private fun FameCard(data: LeagueData, title: String, rows: List<Fame>, accent: 
                         }
                     }
                     Column(horizontalAlignment = Alignment.End) {
-                        Box(
-                            Modifier.clip(RoundedCornerShape(50)).background(accent.copy(alpha = 0.22f))
-                                .padding(horizontal = 10.dp, vertical = 3.dp)
-                        ) {
-                            Text(f.value, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = accent)
-                        }
+                        Text(f.value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         f.note?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = App.colors.muted, modifier = Modifier.padding(top = 2.dp)) }
                     }
                 }
@@ -188,7 +183,7 @@ private fun BarCard(
 private fun HeatmapCard(data: LeagueData) {
     val gws = data.gws
     val teams = data.debtTable.map { it.entryId }
-    SectionCard(title = "Plasman po kolu", subtitle = "${teams.size} = poslednji · jača boja = lošije") {
+    SectionCard(title = "Plasman po kolu", subtitle = "Broj = mesto u kolu · ${teams.size} plaća") {
         PositionHeatmap(
             rows = teams.map { id -> data.teamName(id) to gws.map { g -> g.outcome?.ranks?.get(id) } },
             gws = gws.map { it.gw },

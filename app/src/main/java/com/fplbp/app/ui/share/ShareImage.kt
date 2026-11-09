@@ -120,7 +120,7 @@ object ShareImage {
             val base = y + ROW / 2
             c.drawText("${i + 1}", PAD, base + 14f, paint(40f, MUTED, bold = true))
             c.drawText(ellipsize(team?.name ?: "?", name, 520f), PAD + 64f, base, name)
-            c.drawText(ellipsize("${team?.manager ?: ""} · ${r.timesLast}× poslednji", small, 520f), PAD + 64f, base + 40f, small)
+            c.drawText(ellipsize("${team?.manager ?: ""} · poslednji ×${r.timesLast}", small, 520f), PAD + 64f, base + 40f, small)
             c.drawText(Fmt.rsdShort(r.total), W - PAD, base + 16f, paint(46f, color, bold = true, align = Paint.Align.RIGHT))
             if (i < rows.lastIndex) c.drawLine(PAD, y + ROW, W - PAD, y + ROW, Paint().apply { this.color = GRID; strokeWidth = 2f })
             y += ROW

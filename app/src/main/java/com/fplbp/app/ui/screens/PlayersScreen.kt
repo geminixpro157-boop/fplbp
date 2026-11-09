@@ -105,7 +105,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.teamView(data: League
     if (minus.isNotEmpty()) item {
         SectionCard(title = "Minusi", subtitle = "Izgubljeni bodovi (ukupno ${minus.sumOf { it.second }})") {
             HBarChart(minus.map { (cat, v) ->
-                BarItem(Category.label(cat), -v.toDouble(), App.colors.debt, "$v")
+                BarItem(Category.label(cat), -v.toDouble(), App.colors.muted, "$v")
             }, labelWidth = 120.dp)
         }
     }
@@ -129,8 +129,8 @@ private fun androidx.compose.foundation.lazy.LazyListScope.teamView(data: League
             val worst = caps.minBy { it.points }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatTile("Ukupno", "$total", Modifier.weight(1f))
-                StatTile("Najbolji", "${best.points}", Modifier.weight(1f), sub = "${data.playerName(best.element)} · K${best.gw}")
-                StatTile("Najgori", "${worst.points}", Modifier.weight(1f), sub = "${data.playerName(worst.element)} · K${worst.gw}")
+                StatTile("Najbolji", "${best.points}", Modifier.weight(1f), sub = "${data.playerName(best.element)} · kolo ${best.gw}")
+                StatTile("Najgori", "${worst.points}", Modifier.weight(1f), sub = "${data.playerName(worst.element)} · kolo ${worst.gw}")
             }
             Spacer(Modifier.height(12.dp))
             // Grey stands out against every team color (coral clashed with orange teams).
