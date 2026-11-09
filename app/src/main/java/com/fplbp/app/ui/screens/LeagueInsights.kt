@@ -75,15 +75,12 @@ fun CaptainsCard(data: LeagueData) {
 @Composable
 fun OwnershipCard(data: LeagueData, v: GwView) {
     if (v.lineups.size < 2) return
-    val rows = Insights.ownership(Insights.Gw(v.gw, v.lineups))
+    val rows = Insights.ownership(Insights.Gw(v.gw, v.lineups), limit = Int.MAX_VALUE)
     val teams = data.teams.map { it.entryId }.sorted()
-    SectionCard(title = "Ko koga ima", subtitle = "Igrači koje ima bar dva tima · C kapiten, V vice, ● igra, ○ klupa") {
-        Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Spacer(Modifier.weight(1f))
-            teams.forEach { id -> Box(Modifier.width(40.dp), contentAlignment = Alignment.Center) { TeamDot(teamColor(data, id)) } }
-            Head("Bod.", 40)
-        }
-        HorizontalDivider(color = App.colors.grid)
+    SectionCard(
+        title = "Zajednički igrači",
+        subtitle = "Igrači koje ima bar dva tima · C kapiten, V vice, ● igra, ○ klupa · broj desno = bodovi u ovom kolu",
+    ) {
         if (rows.isEmpty()) Text("Nijedan igrač nije zajednički.", style = MaterialTheme.typography.bodySmall, color = App.colors.muted)
         rows.forEach { o ->
             Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -198,20 +195,18 @@ fun ClubsCard(data: LeagueData) {
             val m = byClub[t.entryId].orEmpty()
             val total = m.values.sum()
             val top = m.entries.sortedByDescending { it.value }.take(3)
-            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                TeamName(data, t.entryId, Modifier.width(120.dp))
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    top.forEach { (club, pts) ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(data.clubs[club]?.shortName ?: "?", Modifier.width(40.dp), style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold)
-                            Box(Modifier.weight(1f)) {
-                                Box(Modifier.fillMaxWidth((pts.toFloat() / total.coerceAtLeast(1)).coerceIn(0.02f, 1f)).height(6.dp)
-                                    .clip(RoundedCornerShape(3.dp)).background(teamColor(data, t.entryId)))
-                            }
-                            Text("${pct(pts, total)}%", Modifier.width(40.dp), textAlign = TextAlign.End,
-                                style = MaterialTheme.typography.labelMedium)
+            Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                TeamName(data, t.entryId, Modifier)
+                top.forEach { (club, pts) ->
+                    Row(Modifier.padding(start = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(data.clubs[club]?.shortName ?: "?", Modifier.width(44.dp), style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold, color = App.colors.muted)
+                        Box(Modifier.weight(1f)) {
+                            Box(Modifier.fillMaxWidth((pts.toFloat() / total.coerceAtLeast(1)).coerceIn(0.02f, 1f)).height(8.dp)
+                                .clip(RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp)).background(teamColor(data, t.entryId)))
                         }
+                        Text("${pct(pts, total)}%", Modifier.width(48.dp), textAlign = TextAlign.End,
+                            style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
