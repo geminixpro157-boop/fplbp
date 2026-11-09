@@ -19,7 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.fplbp.app.data.LeagueData
 
-private val sections = listOf("Statistika", "Transferi", "Igrači", "Čipovi")
+private val sections = listOf("Statistika", "Transferi", "Timovi", "Čipovi")
 
 /** Everything that isn't debt or the current gameweek, in one tab. */
 @Composable

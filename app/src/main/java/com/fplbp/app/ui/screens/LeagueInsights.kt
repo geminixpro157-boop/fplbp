@@ -1,6 +1,18 @@
 package com.fplbp.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.fplbp.app.domain.Decider
+import com.fplbp.app.ui.components.StatCounts
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -176,27 +188,94 @@ private fun Badge(text: String, color: Color) {
 fun OwnPlayersCard(data: LeagueData) {
     val shares = Insights.ownShare(finalInsightGws(data))
     if (shares.isEmpty()) return
-    SectionCard(title = "Bodovi od diferencijala", subtitle = "Od igrača koje niko drugi nije imao") {
+    SectionCard(title = "Bodovi od diferencijala", subtitle = "Igrači koje niko drugi nije imao · tapni tim") {
         shares.values.sortedByDescending { it.share }.forEachIndexed { i, s ->
-            Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+            var open by remember(s.entryId) { mutableStateOf(false) }
+            Column(
+                Modifier.fillMaxWidth().clickable(enabled = s.players.isNotEmpty()) { open = !open }.padding(vertical = 8.dp)
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TeamName(data, s.entryId, Modifier.weight(1f))
                     Text("${pct(s.own, s.total)}%", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Text("  ${s.own} od ${s.total}", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
+                    if (s.players.isNotEmpty()) Arrow(open)
                 }
                 Spacer(Modifier.height(5.dp))
                 SplitBar(listOf(s.own to teamColor(data, s.entryId), (s.total - s.own).coerceAtLeast(0) to App.colors.grid))
-                if (s.players.isNotEmpty()) {
-                    Text(
-                        s.players.take(3).joinToString(" · ") { (el, pts) -> "${data.playerName(el)} $pts" },
-                        style = MaterialTheme.typography.labelSmall, color = App.colors.muted, modifier = Modifier.padding(top = 4.dp),
-                    )
-                }
             }
+            AnimatedVisibility(open) { OwnPlayersList(data, s.entryId) }
             if (i < shares.size - 1) HorizontalDivider(color = App.colors.grid)
         }
     }
 }
+
+private class OwnAcc(var pts: Int = 0, var gws: Int = 0, var bonus: Int = 0, val counts: HashMap<String, Int> = HashMap())
+
+/** A team's season differentials: player, club, event counts, gameweeks unique to the team, points. */
+@Composable
+private fun OwnPlayersList(data: LeagueData, entryId: Long) {
+    val rows = remember(data, entryId) {
+        val acc = HashMap<Int, OwnAcc>()
+        data.gws.filter { it.isFinal && it.lineups.isNotEmpty() }.forEach { v ->
+            Decider.leagueDifferentials(v.lineups)[entryId].orEmpty().forEach { p ->
+                val a = acc.getOrPut(p.element) { OwnAcc() }
+                a.pts += p.total
+                a.gws += 1
+                v.stats[p.element].orEmpty().forEach { st ->
+                    a.counts[st.identifier] = (a.counts[st.identifier] ?: 0) + st.value
+                    if (st.identifier == "bonus") a.bonus += st.points
+                }
+            }
+        }
+        acc.entries.sortedByDescending { it.value.pts }
+    }
+    Column(Modifier.padding(start = 18.dp, bottom = 8.dp)) {
+        rows.forEach { (el, a) ->
+            Column(Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(data.playerName(el), style = MaterialTheme.typography.bodyMedium, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    Spacer(Modifier.width(6.dp))
+                    ClubTag(data.clubShort(el), data.players[el]?.elementType)
+                    Spacer(Modifier.weight(1f))
+                    Text("${a.pts}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                }
+                Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                    StatCounts(a.counts, a.bonus, Modifier.weight(1f))
+                    Text("×${a.gws} kola", style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
+                }
+            }
+        }
+    }
+}
+
+/** A team's points by every club it got points from. */
+@Composable
+private fun AllClubs(data: LeagueData, entryId: Long, byClub: Map<Int, Int>) {
+    val total = byClub.values.sum().coerceAtLeast(1)
+    val max = byClub.values.maxOrNull()?.coerceAtLeast(1) ?: 1
+    Column(Modifier.padding(start = 18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        byClub.entries.filter { it.value != 0 }.sortedByDescending { it.value }.forEach { (club, pts) ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(data.clubs[club]?.shortName ?: "?", Modifier.width(44.dp), style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold, color = App.colors.muted)
+                Box(Modifier.weight(1f)) {
+                    Box(Modifier.fillMaxWidth((pts.toFloat() / max).coerceIn(0.02f, 1f)).height(6.dp)
+                        .clip(RoundedCornerShape(topEnd = 3.dp, bottomEnd = 3.dp)).background(teamColor(data, entryId)))
+                }
+                Text("${pct(pts, total)}%", Modifier.width(44.dp), textAlign = TextAlign.End, style = MaterialTheme.typography.labelMedium)
+                Text("$pts", Modifier.width(36.dp), textAlign = TextAlign.End, style = MaterialTheme.typography.labelMedium,
+                    color = App.colors.muted)
+            }
+        }
+    }
+}
+
+@Composable
+private fun Arrow(open: Boolean) = Icon(
+    if (open) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+    contentDescription = if (open) "Sakrij" else "Prikaži", tint = App.colors.muted,
+)
 
 // ------------------------------------------------------------------ 4./5. shaded tables
 
@@ -211,6 +290,8 @@ private fun ShareTable(
     columns: List<String>,
     values: Map<Long, List<Int>>, // team -> points per column
     fullNames: Boolean,
+    /** When set, each team row gets a ⌄ arrow and opens this content below it. */
+    details: (@Composable (Long) -> Unit)? = null,
 ) {
     val teams = data.teams.map { it.entryId }.sorted()
     val pctRows = teams.associateWith { id ->
@@ -227,9 +308,14 @@ private fun ShareTable(
             Text(c, if (fullNames) Modifier.width(50.dp) else Modifier.weight(1f), textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = App.colors.muted, maxLines = 1)
         }
+        if (details != null) Spacer(Modifier.width(24.dp))
     }
     teams.forEach { id ->
-        Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        var open by remember(id) { mutableStateOf(false) }
+        Row(
+            Modifier.fillMaxWidth().clickable(enabled = details != null) { open = !open }.padding(vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             if (fullNames) TeamName(data, id, Modifier.weight(1f))
             else Box(Modifier.width(22.dp)) { TeamDot(teamColor(data, id)) }
             pctRows.getValue(id).forEachIndexed { c, p ->
@@ -245,7 +331,9 @@ private fun ShareTable(
                         color = MaterialTheme.colorScheme.onSurface)
                 }
             }
+            if (details != null) Arrow(open)
         }
+        if (details != null) AnimatedVisibility(open) { Box(Modifier.padding(top = 4.dp, bottom = 10.dp)) { details(id) } }
     }
     if (!fullNames) {
         HorizontalDivider(Modifier.padding(top = 8.dp, bottom = 8.dp), color = App.colors.grid)
@@ -275,12 +363,13 @@ fun ClubsCard(data: LeagueData) {
     // Same columns for every team: the league's top 3 clubs by points, then the rest.
     val top = byClub.values.flatMap { it.entries }.groupBy({ it.key }, { it.value })
         .mapValues { it.value.sum() }.entries.sortedByDescending { it.value }.take(3).map { it.key }
-    SectionCard(title = "Bodovi po klubu", subtitle = "Najveći udeo u koloni je podebljan") {
+    SectionCard(title = "Bodovi po klubu", subtitle = "Najveći udeo podebljan · tapni tim za sve klubove") {
         ShareTable(
             data = data,
             columns = top.map { data.clubs[it]?.shortName ?: "?" } + "Ost.",
             values = byClub.mapValues { (_, m) -> top.map { m[it] ?: 0 } + (m.values.sum() - top.sumOf { m[it] ?: 0 }) },
             fullNames = true,
+            details = { id -> AllClubs(data, id, byClub[id].orEmpty()) },
         )
     }
 }
