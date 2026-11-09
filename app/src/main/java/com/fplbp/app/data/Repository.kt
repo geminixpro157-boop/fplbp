@@ -98,11 +98,11 @@ class Repository(
         val storedFixtures = dao.fixtures()
         val awaitingConfirm = stored.any { g ->
             g.deadline <= now && !g.finalLocal &&
-                storedFixtures.filter { it.gw == g.id }.let { fx -> fx.isNotEmpty() && fx.all { it.finished } }
+                storedFixtures.filter { it.gw == g.id }.let { fx -> fx.isNotEmpty() && fx.all { it.finished || it.finishedProvisional } }
         }
         val needBootstrap = stored.isEmpty() || now - since > DAY ||
             stored.any { it.deadline in (since + 1)..now } ||
-            (awaitingConfirm && now - since > 20 * MINUTE)
+            (awaitingConfirm && now - since > 45 * MINUTE)
         if (needBootstrap) {
             val boot = api.bootstrap()
             val known = stored.associateBy { it.id }
@@ -289,9 +289,10 @@ class Repository(
                 if (gw.finished) true
                 else gwFixtures.filter { it.teamH == club || it.teamA == club }.all { it.finished || it.finishedProvisional }
             }
+            val allPlayed = gwFixtures.isNotEmpty() && gwFixtures.all { it.finished || it.finishedProvisional }
             val status = when {
                 gw.finalLocal -> GwStatus.FINAL
-                gw.finished -> GwStatus.AWAITING
+                gw.finished || allPlayed -> GwStatus.AWAITING // all matches played, FPL hasn't closed the GW yet
                 else -> GwStatus.LIVE
             }
             val lineups = HashMap<Long, com.fplbp.app.domain.LineupResult>()

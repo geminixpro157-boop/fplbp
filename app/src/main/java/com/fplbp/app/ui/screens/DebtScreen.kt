@@ -119,6 +119,13 @@ private fun PotCard(data: LeagueData) {
             "${data.finalCount} završenih kola × ${Fmt.rsd(data.debt)}",
             style = MaterialTheme.typography.bodySmall, color = App.colors.muted,
         )
+        data.liveGw?.takeIf { it.outcome != null }?.let { live ->
+            Text(
+                "+${Fmt.rsdShort(Rational.of(data.debt))} u toku (Kolo ${live.gw}) → " +
+                    Fmt.rsd(data.pot + data.debt),
+                style = MaterialTheme.typography.bodySmall, color = App.colors.provisional,
+            )
+        }
     }
 }
 
@@ -159,7 +166,11 @@ private fun LiveCard(data: LeagueData, v: GwView) {
     var open by rememberSaveable(v.gw) { mutableStateOf(false) }
     val title = if (v.status == GwStatus.LIVE) "Uživo · Kolo ${v.gw}" else "Kolo ${v.gw} · čeka potvrdu"
     val subtitle = buildString {
-        if (v.fixturesTotal > 0) append("Odigrano ${v.fixturesDone}/${v.fixturesTotal} utakmica · ")
+        if (v.status == GwStatus.LIVE) {
+            if (v.fixturesTotal > 0) append("Odigrano ${v.fixturesDone}/${v.fixturesTotal} utakmica · ")
+        } else {
+            append("Sve utakmice odigrane · ")
+        }
         append("osveženo ${time(data.lastSync).substringAfter(' ')}")
     }
     SectionCard(Modifier.clickable { open = !open }, title = title, subtitle = subtitle, accent = true) {
@@ -167,7 +178,7 @@ private fun LiveCard(data: LeagueData, v: GwView) {
             StatusBadge(v.status)
             Spacer(Modifier.width(8.dp))
             Text(
-                if (v.status == GwStatus.AWAITING) "FPL još potvrđuje bodove" else "Uključeni predviđeni bonus i izmene",
+                if (v.status == GwStatus.AWAITING) "Dug se upisuje kad FPL potvrdi bodove" else "Uključeni predviđeni bonus i izmene",
                 style = MaterialTheme.typography.labelSmall, color = App.colors.muted, modifier = Modifier.weight(1f),
             )
             Icon(
@@ -257,12 +268,15 @@ private fun Detail(label: String, text: String) {
 @Composable
 private fun DebtTable(data: LeagueData, onTeam: (Long) -> Unit) {
     val max = data.debtTable.maxOfOrNull { it.total } ?: Rational.ZERO
+    // Current (not yet confirmed) gameweek: who would pay and how much.
+    val pending = data.liveGw?.outcome
+    val pendingShare = pending?.share
     SectionCard(title = "Tabela dugovanja", subtitle = "Tapni tim za detalje") {
         Row(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
             Text("#", Modifier.width(24.dp), style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
             Text("Tim", Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
             Text("Puta zadnji", Modifier.width(72.dp), style = MaterialTheme.typography.labelSmall, color = App.colors.muted, textAlign = TextAlign.End)
-            Text("Dug", Modifier.width(104.dp), style = MaterialTheme.typography.labelSmall, color = App.colors.muted, textAlign = TextAlign.End)
+            Text("Dug", Modifier.width(112.dp), style = MaterialTheme.typography.labelSmall, color = App.colors.muted, textAlign = TextAlign.End)
         }
         HorizontalDivider(color = App.colors.grid)
         data.debtTable.forEachIndexed { i, row ->
@@ -281,15 +295,26 @@ private fun DebtTable(data: LeagueData, onTeam: (Long) -> Unit) {
                     }
                     Text(team?.manager ?: "", style = MaterialTheme.typography.labelSmall, color = App.colors.muted, maxLines = 1)
                 }
+                val paysNow = pending != null && pendingShare != null && row.entryId in pending.losers
                 Column(Modifier.width(72.dp), horizontalAlignment = Alignment.End) {
                     Text("${row.timesLast}", style = MaterialTheme.typography.bodyMedium)
                     if (row.timesLastShared > 0) Text("${row.timesLastShared} deljeno", style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
+                    if (paysNow) Text("+1", style = MaterialTheme.typography.labelSmall, color = App.colors.provisional)
                 }
-                Text(
-                    Fmt.rsd(row.total), Modifier.width(104.dp),
-                    style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End,
-                    color = debtColor(row.total, max),
-                )
+                Column(Modifier.width(112.dp), horizontalAlignment = Alignment.End) {
+                    Text(
+                        Fmt.rsd(row.total),
+                        style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End,
+                        color = debtColor(row.total, max),
+                    )
+                    if (paysNow) {
+                        val share = pendingShare!!
+                        Text("+${Fmt.rsdShort(share)} u toku", style = MaterialTheme.typography.labelSmall,
+                            color = App.colors.provisional, textAlign = TextAlign.End)
+                        Text("→ ${Fmt.rsd(row.total + share)}", style = MaterialTheme.typography.labelSmall,
+                            color = App.colors.provisional, textAlign = TextAlign.End)
+                    }
+                }
             }
             if (i < data.debtTable.lastIndex) HorizontalDivider(color = App.colors.grid)
         }

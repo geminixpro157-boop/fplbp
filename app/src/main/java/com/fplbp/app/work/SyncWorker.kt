@@ -41,7 +41,7 @@ class SyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
         val need = data == null || age > 6 * HOUR ||
             (prefs.updatingSince > 0 && age > 15 * MIN) ||
             ((matchWindow || justAfterDeadline || nextDeadlinePassed) && age > 25 * MIN) ||
-            (awaitingFinal && age > 90 * MIN)
+            (awaitingFinal && age > 55 * MIN)
 
         if (need) {
             val r = repo.sync()
