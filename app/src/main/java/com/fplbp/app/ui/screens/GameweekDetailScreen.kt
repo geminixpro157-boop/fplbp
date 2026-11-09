@@ -137,7 +137,7 @@ private fun Header(data: LeagueData, v: GwView) {
 
 @Composable
 private fun WeekTransfers(data: LeagueData, v: GwView, weeks: List<com.fplbp.app.domain.TransferAnalysis.Week>) {
-    SectionCard(title = "Transferi ovog kola", subtitle = "Bodovi ovog kola: novi igrač naspram prodatog (bez kapitena)") {
+    SectionCard(title = "Transferi ovog kola", subtitle = "Bodovi u ovom kolu: ↑ novi igrač naspram ↓ prodatog (bez kapitena)") {
         val order = v.scores.sortedByDescending { it.net }.map { it.entryId }
         val sorted = weeks.sortedBy { order.indexOf(it.entryId) }
         sorted.forEachIndexed { i, w ->
@@ -153,7 +153,10 @@ private fun WeekTransfers(data: LeagueData, v: GwView, weeks: List<com.fplbp.app
                 Text("Free Hit: ${fh.points} umesto ${fh.wouldHave} sa prošlonedeljnim timom (${signed(fh.diff)})",
                     style = MaterialTheme.typography.bodySmall)
             }
-            w.results.forEach { TransferRow(data, it, weekOnly = true) }
+            w.results.sortedByDescending { it.weekDiff }.forEachIndexed { j, r ->
+                if (j > 0) Spacer(Modifier.height(6.dp))
+                TransferCard(data, r, held = false, showGw = false)
+            }
             if (w.hit > 0) Text("Hit −${w.hit}", style = MaterialTheme.typography.labelMedium, color = App.colors.debt)
             if (i < sorted.lastIndex) HorizontalDivider(Modifier.padding(top = 6.dp), color = App.colors.grid)
         }
