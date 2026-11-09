@@ -247,25 +247,42 @@ private fun OwnPlayersList(data: LeagueData, entryId: Long) {
     }
 }
 
-/** A team's points by every club it got points from. */
+/**
+ * A team's points by club: top 6, then the rest in one row. Bars span exactly the
+ * 4 share cells above (4 × 50dp) so the drill-down never sticks out of the table.
+ */
 @Composable
 private fun AllClubs(data: LeagueData, entryId: Long, byClub: Map<Int, Int>) {
     val total = byClub.values.sum().coerceAtLeast(1)
-    val max = byClub.values.maxOrNull()?.coerceAtLeast(1) ?: 1
-    Column(Modifier.padding(start = 18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        byClub.entries.filter { it.value != 0 }.sortedByDescending { it.value }.forEach { (club, pts) ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(data.clubs[club]?.shortName ?: "?", Modifier.width(44.dp), style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold, color = App.colors.muted)
-                Box(Modifier.weight(1f)) {
-                    Box(Modifier.fillMaxWidth((pts.toFloat() / max).coerceIn(0.02f, 1f)).height(6.dp)
-                        .clip(RoundedCornerShape(topEnd = 3.dp, bottomEnd = 3.dp)).background(teamColor(data, entryId)))
-                }
-                Text("${pct(pts, total)}%", Modifier.width(44.dp), textAlign = TextAlign.End, style = MaterialTheme.typography.labelMedium)
-                Text("$pts", Modifier.width(36.dp), textAlign = TextAlign.End, style = MaterialTheme.typography.labelMedium,
-                    color = App.colors.muted)
+    val sorted = byClub.entries.filter { it.value != 0 }.sortedByDescending { it.value }
+    val shown = sorted.take(6)
+    val rest = sorted.drop(6)
+    val max = shown.maxOfOrNull { it.value }?.coerceAtLeast(1) ?: 1
+    val color = teamColor(data, entryId)
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        shown.forEach { (club, pts) ->
+            ClubLine(data.clubs[club]?.shortName ?: "?", "${pct(pts, total)}% · $pts") {
+                Box(Modifier.fillMaxWidth((pts.toFloat() / max).coerceIn(0.02f, 1f)).height(6.dp)
+                    .clip(RoundedCornerShape(topEnd = 3.dp, bottomEnd = 3.dp)).background(color))
             }
         }
+        if (rest.isNotEmpty()) {
+            val restPts = rest.sumOf { it.value }
+            ClubLine("+ ${rest.size} ${if (rest.size == 1) "klub" else if (rest.size in 2..4) "kluba" else "klubova"}",
+                "${pct(restPts, total)}% · $restPts", muted = true) {}
+        }
+    }
+}
+
+@Composable
+private fun ClubLine(label: String, value: String, muted: Boolean = false, bar: @Composable () -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.padding(start = 18.dp).weight(1f), style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (muted) FontWeight.Normal else FontWeight.SemiBold, color = App.colors.muted, maxLines = 1)
+        Text(value, Modifier.padding(end = 8.dp), style = MaterialTheme.typography.labelMedium,
+            color = if (muted) App.colors.muted else MaterialTheme.colorScheme.onSurface, maxLines = 1)
+        Box(Modifier.width(200.dp)) { bar() }
+        Spacer(Modifier.width(24.dp))
     }
 }
 

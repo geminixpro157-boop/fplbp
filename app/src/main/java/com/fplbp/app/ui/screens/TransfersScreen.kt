@@ -7,6 +7,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -241,6 +243,7 @@ private fun GwGroup(data: LeagueData, entryId: Long, gw: Int, rs: List<TransferA
  * One transfer as a two-row comparison: ↑ player in vs ↓ player out, with a verdict.
  * [held] = points while the new player was kept; otherwise only the transfer's own gameweek.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TransferCard(data: LeagueData, r: TransferAnalysis.Result, held: Boolean, showGw: Boolean, showDiff: Boolean = true) {
     val inPts = if (held) r.heldIn else r.weekIn
@@ -258,13 +261,16 @@ fun TransferCard(data: LeagueData, r: TransferAnalysis.Result, held: Boolean, sh
             Text(signed(diff), style = MaterialTheme.typography.titleMedium, color = signColor(diff), fontWeight = FontWeight.Bold)
         }
         val max = maxOf(inPts, outPts, 1)
-        // In the season view, also show each player's points in the transfer gameweek itself.
-        val gwNote = held && r.heldGws.size > 1
-        PlayerLine(data, "↑", "Ušao", r.elementIn, inPts, max, App.colors.safe, if (gwNote) "kolo ${r.gw}: ${r.weekIn}" else null)
-        PlayerLine(data, "↓", "Izašao", r.elementOut, outPts, max, App.colors.debt, if (gwNote) "kolo ${r.gw}: ${r.weekOut}" else null)
+        PlayerLine(data, "↑", "Ušao", r.elementIn, inPts, max, App.colors.safe)
+        PlayerLine(data, "↓", "Izašao", r.elementOut, outPts, max, App.colors.debt)
         if (held) {
             val kept = r.heldGws
-            Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            FlowRow(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                // Difference in the transfer gameweek itself; only useful when he stayed longer than that.
+                if (kept.size > 1) {
+                    val d = r.weekIn - r.weekOut
+                    Label("kolo ${r.gw}: ${signed(d)}", if (d == 0) App.colors.muted else signColor(d))
+                }
                 Label(
                     when (kept.size) { 0 -> "nije igrao za tim"; 1 -> "1 kolo u timu"; else -> "${kola(kept.size)} u timu" },
                     App.colors.muted,
@@ -281,7 +287,7 @@ fun TransferCard(data: LeagueData, r: TransferAnalysis.Result, held: Boolean, sh
 }
 
 @Composable
-private fun PlayerLine(data: LeagueData, arrow: String, label: String, element: Int, pts: Int, max: Int, color: Color, note: String? = null) {
+private fun PlayerLine(data: LeagueData, arrow: String, label: String, element: Int, pts: Int, max: Int, color: Color) {
     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(arrow, Modifier.width(14.dp), color = color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
         Text(label, Modifier.width(48.dp), style = MaterialTheme.typography.labelSmall, color = color)
@@ -298,10 +304,7 @@ private fun PlayerLine(data: LeagueData, arrow: String, label: String, element: 
                     .clip(RoundedCornerShape(topEnd = 3.dp, bottomEnd = 3.dp)).background(color.copy(alpha = 0.75f))
             )
         }
-        Column(Modifier.width(70.dp), horizontalAlignment = Alignment.End) {
-            Text("$pts", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-            note?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = App.colors.muted, maxLines = 1) }
-        }
+        Text("$pts", Modifier.width(56.dp), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
     }
 }
 
