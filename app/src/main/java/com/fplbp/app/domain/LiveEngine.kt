@@ -10,7 +10,7 @@ object Pos {
     /** Minimum players per position in the playing XI (FPL squad_min_play). */
     val MIN_PLAY = mapOf(GK to 1, DEF to 3, MID to 2, FWD to 1)
 
-    fun short(t: Int) = when (t) { GK -> "GK"; DEF -> "ODB"; MID -> "VEZ"; FWD -> "NAP"; else -> "?" }
+    fun short(t: Int) = when (t) { GK -> "GOL"; DEF -> "ODB"; MID -> "VEZ"; FWD -> "NAP"; else -> "?" }
 }
 
 data class PickIn(

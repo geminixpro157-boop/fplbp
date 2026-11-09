@@ -36,11 +36,19 @@ import com.fplbp.app.ui.components.TeamDot
 import com.fplbp.app.ui.components.teamColor
 import com.fplbp.app.ui.theme.App
 
+private const val HALF = 19
+
+private fun chipOrder(name: String) = when (name) { "wildcard" -> 0; "freehit" -> 1; "bboost" -> 2; "3xc" -> 3; else -> 4 }
+
 @Composable
 fun ChipsScreen(data: LeagueData) {
     if (data.chipWindows.isEmpty()) return EmptyState("Podaci o čipovima još nisu učitani.")
-    // One card per chip period (since 2025/26: kola 1–19 and 20–38).
-    val periods = data.chipWindows.groupBy { it.startEvent to it.stopEvent }.toList().sortedBy { it.first.first }
+    // One card per half of the season (since 2025/26 every chip is available once per half).
+    // Windows inside a half can start at different gameweeks (e.g. Wildcard from GW 2), so group by half.
+    val halves = data.chipWindows.groupBy { it.stopEvent <= HALF }
+    val periods = listOfNotNull(halves[true], halves[false]).map { ws ->
+        (ws.minOf { it.startEvent } to ws.maxOf { it.stopEvent }) to ws.sortedWith(compareBy({ chipOrder(it.name) }, { it.startEvent }))
+    }
     val current = data.liveGw?.gw ?: data.gws.lastOrNull()?.gw ?: 0
 
     LazyColumn(

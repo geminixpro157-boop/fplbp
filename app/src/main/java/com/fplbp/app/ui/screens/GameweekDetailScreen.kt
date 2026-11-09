@@ -40,7 +40,6 @@ import com.fplbp.app.data.GwView
 import com.fplbp.app.data.LeagueData
 import com.fplbp.app.domain.Chips
 import com.fplbp.app.domain.Decider
-import com.fplbp.app.domain.Pos
 import com.fplbp.app.domain.Fmt
 import com.fplbp.app.ui.components.PlayerRow
 import com.fplbp.app.ui.components.EmptyState
@@ -183,18 +182,16 @@ private fun Lineups(data: LeagueData, v: GwView) {
             }
             if (lu != null) AnimatedVisibility(open) {
                 Column(Modifier.padding(bottom = 8.dp)) {
-                    if (v.verified[s.entryId] == false) {
+                    if (v.isFinal && v.verified[s.entryId] == false) {
                         Text("Raspodela po igračima se razlikuje od FPL zbira; tabela koristi zvanične bodove.",
                             style = MaterialTheme.typography.labelSmall, color = App.colors.provisional)
                     }
                     val starters = if (s.chip == "bboost") lu.picks
                     else lu.picks.filter { (it.position <= 11 && !it.subbedOut) || it.subbedIn }
                     val bench = lu.picks - starters.toSet()
-                    starters.groupBy { data.players[it.element]?.elementType ?: 0 }.toSortedMap().forEach { (type, group) ->
-                        Text(Pos.short(type), style = MaterialTheme.typography.labelSmall, color = App.colors.muted,
-                            modifier = Modifier.padding(top = 6.dp))
-                        group.forEach { PlayerRow(data, v, it) }
-                    }
+                    // Ordered GOL → ODB → VEZ → NAP; the club chip already shows the position.
+                    starters.sortedWith(compareBy({ data.players[it.element]?.elementType ?: 0 }, { it.position }))
+                        .forEach { PlayerRow(data, v, it) }
                     if (bench.isNotEmpty()) {
                         HorizontalDivider(Modifier.padding(vertical = 6.dp), color = App.colors.grid)
                         Text("Klupa", style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
