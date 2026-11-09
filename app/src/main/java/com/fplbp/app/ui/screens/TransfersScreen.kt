@@ -80,10 +80,11 @@ private fun transfera(n: Int) = count(n, "transfer", "transfera", "transfera")
 private fun kola(n: Int) = count(n, "kolo", "kola", "kola")
 
 @Composable
-fun TransfersScreen(data: LeagueData, selected: Long, onSelect: (Long) -> Unit) {
+fun TransfersScreen(data: LeagueData) {
     if (data.transfers.isEmpty() && data.transferSummary.values.all { it.freeHits.isEmpty() }) {
         return EmptyState("Još nema transfera (prvi su mogući od kola 2).")
     }
+    var selected by rememberSaveable { mutableLongStateOf(data.teams.firstOrNull()?.entryId ?: 0L) }
     var byImpact by rememberSaveable { mutableIntStateOf(0) }
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -96,7 +97,7 @@ fun TransfersScreen(data: LeagueData, selected: Long, onSelect: (Long) -> Unit) 
                 data.teams.forEach { t ->
                     FilterChip(
                         selected = selected == t.entryId,
-                        onClick = { onSelect(t.entryId) },
+                        onClick = { selected = t.entryId },
                         label = { Text(t.name) },
                         leadingIcon = { TeamDot(teamColor(data, t.entryId)) },
                     )

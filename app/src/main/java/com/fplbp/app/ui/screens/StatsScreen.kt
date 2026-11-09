@@ -31,7 +31,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.remember
+import com.fplbp.app.data.Category
 import com.fplbp.app.data.LeagueData
+import com.fplbp.app.data.PlayerContribution
 import com.fplbp.app.domain.Fmt
 import com.fplbp.app.domain.TeamSeasonStats
 import com.fplbp.app.domain.poena
@@ -44,7 +47,7 @@ import com.fplbp.app.ui.components.teamColor
 import com.fplbp.app.ui.theme.App
 
 @Composable
-fun StatsScreen(data: LeagueData, onTeam: (Long) -> Unit, onHits: (Long) -> Unit = {}) {
+fun StatsScreen(data: LeagueData, onTeam: (Long) -> Unit) {
     val stats = data.seasonStats.values.toList()
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -54,8 +57,8 @@ fun StatsScreen(data: LeagueData, onTeam: (Long) -> Unit, onHits: (Long) -> Unit
         item { TotalPoints(data, onTeam) }
         item { Highlights(data, stats) }
         item {
-            BarCard(data, "Minusi za transfere", "Ukupno bodova izgubljeno na hitove · tapni tim za transfere", stats,
-                suffix = { s -> " (×${s.hitsCount})" }, onTap = onHits) { it.hitsPoints }
+            BarCard(data, "Minusi za transfere", "Ukupno bodova izgubljeno na hitove", stats,
+                suffix = { s -> " (×${s.hitsCount})" }) { it.hitsPoints }
         }
         item {
             BarCard(data, "Bodovi ostavljeni na klupi", "Bez kola sa Bench Boost-om · tapni tim za igrače", stats,
@@ -190,41 +193,52 @@ private fun BarCard(
     }
 }
 
-/** Who sat on this team's bench with the most points (Bench Boost weeks excluded), and the worst week. */
+/** Who sat on this team's bench with points (Bench Boost weeks excluded), shown like the Top 10 list. */
 @Composable
 private fun BenchDetails(data: LeagueData, entryId: Long) {
-    val byPlayer = HashMap<Int, Pair<Int, Int>>() // element -> (points, times)
-    var worst: Pair<Int, Int>? = null // gw -> points
-    data.gws.forEach { g ->
-        if (g.scores.firstOrNull { it.entryId == entryId }?.chip == "bboost") return@forEach
-        val lu = g.lineups[entryId] ?: return@forEach
-        val bench = lu.picks.filter { it.multiplier == 0 && !it.subbedOut }
-        val sum = bench.sumOf { it.points }
-        if (sum > (worst?.second ?: 0)) worst = g.gw to sum
-        bench.filter { it.points > 0 }.forEach { p ->
-            val (pts, n) = byPlayer[p.element] ?: (0 to 0)
-            byPlayer[p.element] = (pts + p.points) to (n + 1)
+    val (rows, worst) = remember(data, entryId) {
+        val acc = HashMap<Int, PlayerContribution>()
+        var worst: Pair<Int, Int>? = null // gw -> points
+        data.gws.forEach { g ->
+            if (g.scores.firstOrNull { it.entryId == entryId }?.chip == "bboost") return@forEach
+            val lu = g.lineups[entryId] ?: return@forEach
+            val bench = lu.picks.filter { it.multiplier == 0 && !it.subbedOut }
+            val sum = bench.sumOf { it.points }
+            if (sum > (worst?.second ?: 0)) worst = g.gw to sum
+            bench.filter { it.points > 0 }.forEach { p ->
+                val cats = HashMap<String, Int>()
+                val counts = HashMap<String, Int>()
+                var bonus = 0
+                g.stats[p.element].orEmpty().forEach { st ->
+                    val c = Category.of(st.identifier)
+                    cats[c] = (cats[c] ?: 0) + st.points
+                    counts[st.identifier] = (counts[st.identifier] ?: 0) + st.value
+                    if (st.identifier == "bonus") bonus += st.points
+                }
+                val prev = acc[p.element]
+                acc[p.element] = PlayerContribution(
+                    element = p.element,
+                    total = (prev?.total ?: 0) + p.points,
+                    byCategory = (prev?.byCategory.orEmpty().keys + cats.keys).associateWith { (prev?.byCategory?.get(it) ?: 0) + (cats[it] ?: 0) },
+                    captainExtra = 0,
+                    gwsCounted = (prev?.gwsCounted ?: 0) + 1,
+                    counts = (prev?.counts.orEmpty().keys + counts.keys).associateWith { (prev?.counts?.get(it) ?: 0) + (counts[it] ?: 0) },
+                    bonusRaw = (prev?.bonusRaw ?: 0) + bonus,
+                )
+            }
         }
+        acc.values.sortedByDescending { it.total }.take(5) to worst
     }
-    val top = byPlayer.entries.sortedByDescending { it.value.first }.take(5)
-    Column(Modifier.padding(start = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (top.isEmpty()) {
+    Column(Modifier.padding(top = 4.dp, bottom = 4.dp)) {
+        if (rows.isEmpty()) {
             Text("Niko nije doneo bodove sa klupe.", style = MaterialTheme.typography.labelMedium, color = App.colors.muted)
             return@Column
         }
-        top.forEach { (element, v) ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(data.playerName(element), Modifier.weight(1f), style = MaterialTheme.typography.labelMedium,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("×${v.second}", Modifier.width(36.dp), textAlign = TextAlign.End, style = MaterialTheme.typography.labelMedium,
-                    color = App.colors.muted)
-                Text("${v.first}", Modifier.width(36.dp), textAlign = TextAlign.End, style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold)
-            }
-        }
+        val maxTotal = rows.first().total.coerceAtLeast(1)
+        rows.forEachIndexed { i, c -> TopPlayer(data, i, c, maxTotal, teamColor(data, entryId)) }
         worst?.let { (gw, pts) ->
             Text("Najgore: kolo $gw · ${poena(pts)} na klupi", style = MaterialTheme.typography.labelSmall,
-                color = App.colors.muted, modifier = Modifier.padding(top = 2.dp))
+                color = App.colors.muted, modifier = Modifier.padding(start = 24.dp, top = 4.dp))
         }
     }
 }
