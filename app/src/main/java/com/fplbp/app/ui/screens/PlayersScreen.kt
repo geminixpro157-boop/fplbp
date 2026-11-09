@@ -149,6 +149,9 @@ private fun androidx.compose.foundation.lazy.LazyListScope.leagueView(data: Leag
     item { ClubsCard(data) }
 }
 
+/** Same width for the three number columns, so headers and values line up. */
+private val COL = 64.dp
+
 private data class Src(val label: String, val value: Int, val color: Color, val diff: Int)
 
 private fun categoryTotals(data: LeagueData, entryId: Long): Map<String, Int> {
@@ -183,8 +186,8 @@ private fun SourcesCard(data: LeagueData, entryId: Long, positive: List<Pair<Str
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth().padding(bottom = 2.dp)) {
             Spacer(Modifier.weight(1f))
-            listOf("bodovi" to 56, "udeo" to 44, "vs liga" to 60).forEach { (h, w) ->
-                Text(h, Modifier.width(w.dp), textAlign = TextAlign.End, style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
+            listOf("bodovi", "udeo", "± prosek").forEach { h ->
+                Text(h, Modifier.width(COL), textAlign = TextAlign.End, style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
             }
         }
         rows.forEach { r ->
@@ -192,19 +195,19 @@ private fun SourcesCard(data: LeagueData, entryId: Long, positive: List<Pair<Str
                 Box(Modifier.size(10.dp).clip(RoundedCornerShape(3.dp)).background(r.color))
                 Spacer(Modifier.width(10.dp))
                 Text(r.label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("${r.value}", Modifier.width(56.dp), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                Text("${Math.round(r.value * 100.0 / total)}%", Modifier.width(44.dp), textAlign = TextAlign.End,
-                    style = MaterialTheme.typography.bodySmall, color = App.colors.muted)
+                Text("${r.value}", Modifier.width(COL), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                Text("${Math.round(r.value * 100.0 / total)}%", Modifier.width(COL), textAlign = TextAlign.End,
+                    style = MaterialTheme.typography.bodyMedium, color = App.colors.muted)
                 Text(
                     if (r.diff > 0) "+${r.diff}" else if (r.diff < 0) "−${-r.diff}" else "0",
-                    Modifier.width(60.dp), textAlign = TextAlign.End, style = MaterialTheme.typography.bodySmall,
+                    Modifier.width(COL), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = when { r.diff > 0 -> App.colors.safe; r.diff < 0 -> App.colors.debt; else -> App.colors.muted },
                 )
             }
         }
         Spacer(Modifier.height(6.dp))
-        Text("vs liga = razlika od proseka svih timova", style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
+        Text("± prosek = koliko bodova više ili manje od proseka lige", style = MaterialTheme.typography.labelSmall, color = App.colors.muted)
     }
 }
 

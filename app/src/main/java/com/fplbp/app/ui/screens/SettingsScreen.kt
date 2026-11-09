@@ -82,7 +82,7 @@ fun SettingsScreen(vm: MainViewModel) {
             }
         }
         item {
-            SectionCard(title = "Obaveštenja", subtitle = "Najviše 3 dnevno · tiho od 0 do 8 h") {
+            SectionCard(title = "Obaveštenja", subtitle = "Tiho od 0 do 8 h") {
                 Toggle("Kolo završeno", "Ko duguje i zanimljivost kola", nSettle) { nSettle = it; prefs.notifSettle = it }
                 Toggle("Posle roka", "Kapiteni, čipovi i hitovi", nDeadline) { nDeadline = it; prefs.notifDeadline = it }
                 Toggle("Tokom kola", "Promene na dnu i napeta borba za dno", nMatchday) { nMatchday = it; prefs.notifMatchday = it }
