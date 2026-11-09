@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -119,7 +120,14 @@ fun AppRoot(vm: MainViewModel = viewModel()) {
         contentColor = MaterialTheme.colorScheme.onBackground,
         topBar = {
             TopAppBar(
-                title = { Text(title, fontWeight = FontWeight.Bold) },
+                title = {
+                    if (isTab) Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Our own coin logo (not the official FPL one), then the league name.
+                        Image(painterResource(R.drawable.ic_logo_coin), contentDescription = null, modifier = Modifier.size(32.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text(title, fontWeight = FontWeight.Bold)
+                    } else Text(title, fontWeight = FontWeight.Bold)
+                },
                 navigationIcon = {
                     if (!isTab) IconButton(onClick = { nav.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Nazad")
